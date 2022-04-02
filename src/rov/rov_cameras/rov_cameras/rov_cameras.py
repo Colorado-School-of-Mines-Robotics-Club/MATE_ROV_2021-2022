@@ -9,6 +9,8 @@ from cv_bridge import CvBridge
 import cv2
 import glob
 
+import asyncio
+
 FPS = float(30.0)
 
 class ROVCameras(Node):
@@ -29,19 +31,23 @@ class ROVCameras(Node):
     
     def construct_cameras(self):
         self.cameras = []
+        self.captured_cam_events = []
         for camera in glob.glob("/dev/video?"):
             c = cv2.VideoCapture(camera)
             sleep(0.125) # wait for camera to open
             if not(c is None or not c.isOpened()) and len(self.cameras) < 4:
                 self.cameras.append(c)
                 self.active_cameras.add(f"cam{len(self.cameras)-1}")
+                self.captured_cam_events.append(camera)
 
     def cams(self):
         for camera in self.active_cameras:
             ret, frame = self.cameras[int(camera[-1])].read()
             if(ret):
                 self.camera_publishers[camera].publish(self.br.cv2_to_imgmsg(frame))
-        pass
+            else:
+                # TODO: implement checking if this camera was disconnected -> asynchronous reconstruction of lost camera object
+                pass
 
     def toggleCam(self, cam:int):
         if(f"cam{cam}" in self.active_cameras):
