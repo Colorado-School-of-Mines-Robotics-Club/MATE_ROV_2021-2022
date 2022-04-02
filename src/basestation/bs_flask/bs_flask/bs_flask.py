@@ -32,7 +32,7 @@ class Flask_Node(Node):
             "cam3":self.create_publisher(Bool, "cam3_control", 10)
         }
 
-        self.images = [None, None, None, None]
+        self.images = [DEFAULT_IMAGE, DEFAULT_IMAGE, DEFAULT_IMAGE, DEFAULT_IMAGE]
         self.locks = [threading.Lock(), threading.Lock(), threading.Lock(), threading.Lock()]
     
     def camera0_callback(self, msg:Image):
