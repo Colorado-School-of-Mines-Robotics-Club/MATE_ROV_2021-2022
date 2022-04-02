@@ -14,6 +14,11 @@ import os
 FPS = float(30.0)
 PREFIX = get_package_share_directory("bs_flask")
 DEFAULT_IMAGE = cv2.imread(os.path.join(PREFIX,"default.jpg"))
+FROZEN_IMAGE = cv2.imread(os.path.join(PREFIX,"frozen.jpg"))
+
+def convertNumpyArrayToHTMLTag(ndarray):
+    _, buffer = cv2.imencode('.jpg', ndarray)
+    return buffer.tobytes() # readable by html-img tag
 
 class Flask_Node(Node):
     def __init__(self) -> None:
@@ -37,40 +42,53 @@ class Flask_Node(Node):
         }
 
         self.images = [DEFAULT_IMAGE, DEFAULT_IMAGE, DEFAULT_IMAGE, DEFAULT_IMAGE]
+        self.image_dirty = [False, False, False, False]
         self.locks = [threading.Lock(), threading.Lock(), threading.Lock(), threading.Lock()]
+
+        self.are_we_frozen = self.create_timer(3, self.freeze_catcher)
     
-    def freeze_catcher():
-        pass
+    def freeze_catcher(self):
+        for i in range(0,4):
+            if(self.image_dirty[i] != True):
+                # image has frozen, replace it with frozen image
+                self.images[i] = FROZEN_IMAGE
+            else:
+                self.image_dirty[i] = False
+
+    def camera_onoff(self, index:int, onoff:bool):
+        msg = Bool()
+        msg.data=onoff
+        self.camera_control[index].publish(msg)
 
     def camera0_callback(self, msg:Image):
         self.locks[0].acquire()
-        self.images[0] = self.br.imgmsg_to_cv2(msg)
+        self.images[0] = convertNumpyArrayToHTMLTag(self.br.imgmsg_to_cv2(msg))
+        self.image_dirty[0] = True
         self.locks[0].release()
 
     def camera1_callback(self, msg:Image):
         self.locks[1].acquire()
-        self.images[1] = self.br.imgmsg_to_cv2(msg)
+        self.images[1] = convertNumpyArrayToHTMLTag(self.br.imgmsg_to_cv2(msg))
+        self.image_dirty[1] = True
         self.locks[1].release()
 
     def camera2_callback(self, msg:Image):
         self.locks[2].acquire()
-        self.images[2] = self.br.imgmsg_to_cv2(msg)
+        self.images[2] = convertNumpyArrayToHTMLTag(self.br.imgmsg_to_cv2(msg))
+        self.image_dirty[2] = True
         self.locks[2].release()
 
     def camera3_callback(self, msg:Image):
         self.locks[3].acquire()
-        self.images[3] = self.br.imgmsg_to_cv2(msg)
+        self.images[3] = convertNumpyArrayToHTMLTag(self.br.imgmsg_to_cv2(msg))
+        self.image_dirty[3] = True
         self.locks[3].release()
-
-    def convertNumpyArrayToHTMLTag(self, ndarray):
-        _, buffer = cv2.imencode('.jpg', ndarray)
-        return buffer.tobytes() # readable by html-img tag
 
     def getImage(self, index):
         while True:
             sleep(1/FPS)
             self.locks[index].acquire()
-            htmltag = self.convertNumpyArrayToHTMLTag(self.images[index])
+            htmltag = self.images[index]
             self.locks[index].release()
             yield (b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + htmltag + b'\r\n\r\n')
