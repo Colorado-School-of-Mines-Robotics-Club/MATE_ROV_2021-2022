@@ -1,101 +1,90 @@
-import base64
-import cv2
-from flask import Flask, request, render_template, render_template_string, Response
-import numpy
-import os
-import socket
-from threading import Thread, Lock
-import time
-import Jetson.GPIO as GPIO
-import dbus
 import rclpy
+import signal
 from rclpy.node import Node
-
-from sensor_msgs.msg import Image
 from std_msgs.msg import Bool
+from sensor_msgs.msg import Image
+import threading
+from flask import Flask, request, render_template, render_template_string, Response
+from cv_bridge import CvBridge
+import cv2
+import os
 
-import flask
+DEFAULT_IMAGE = cv2.imread(os.path.join(os.path.dirname(os.path.realpath(__file__)), "default.jpg"))
 
 class Flask_Node(Node):
     def __init__(self) -> None:
-        super().__init__(node_name="basestation_flask")
+        super().__init__("flask_node")
+        self.br = CvBridge()
 
         # subscriptions to handle receiving images
         self.camera_subscriptions = {
             "cam0":self.create_subscription(Image, 'cam0_image', self.camera0_callback, 10),
-            "cam1":self.create_subscription(Image, 'cam1_image', self.camera0_callback, 10),
-            "cam2":self.create_subscription(Image, 'cam2_image', self.camera0_callback, 10),
-            "cam3":self.create_subscription(Image, 'cam3_image', self.camera0_callback, 10)
+            "cam1":self.create_subscription(Image, 'cam1_image', self.camera1_callback, 10),
+            "cam2":self.create_subscription(Image, 'cam2_image', self.camera2_callback, 10),
+            "cam3":self.create_subscription(Image, 'cam3_image', self.camera3_callback, 10)
         }
 
         # publishers to control activation of cameras
         self.camera_control = {
             "cam0":self.create_publisher(Bool, "cam0_control", 10),
-            "cam1":self.create_publisher(Bool, "cam0_control", 10),
-            "cam2":self.create_publisher(Bool, "cam0_control", 10),
-            "cam3":self.create_publisher(Bool, "cam0_control", 10)
+            "cam1":self.create_publisher(Bool, "cam1_control", 10),
+            "cam2":self.create_publisher(Bool, "cam2_control", 10),
+            "cam3":self.create_publisher(Bool, "cam3_control", 10)
         }
 
-    def camera0_callback(self, msg:Image):
-        pass
+        self.images = [None, None, None, None]
+        self.locks = [threading.Lock(), threading.Lock(), threading.Lock(), threading.Lock()]
     
+    def camera0_callback(self, msg:Image):
+        self.locks[0].acquire()
+        self.images[0] = self.br.imgmsg_to_cv2(msg)
+        self.locks[0].release()
+
     def camera1_callback(self, msg:Image):
-        pass
+        self.locks[1].acquire()
+        self.images[1] = self.br.imgmsg_to_cv2(msg)
+        self.locks[1].release()
 
     def camera2_callback(self, msg:Image):
-        pass
+        self.locks[2].acquire()
+        self.images[2] = self.br.imgmsg_to_cv2(msg)
+        self.locks[2].release()
 
     def camera3_callback(self, msg:Image):
-        pass
+        self.locks[3].acquire()
+        self.images[3] = self.br.imgmsg_to_cv2(msg)
+        self.locks[3].release()
 
-    def flask_server(self):
-        pass
-
-def main():
-    print('Hi from bs_flask.')
-
-DEFAULT_IMAGE = "default.jpg"
-
-app = Flask(__name__)
-video_capture = cv2.VideoCapture(0)
-
-class ImageServer:
-    def __init__(self) -> None:
-        self.thread = Thread(target=self._run, args=(self,), daemon=True, name="ImageServer")
-        self.address = ("0.0.0.0", 7777)
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.mutex = Lock()
-        self.html_img = self.createDefaultImage()
-
-    def createDefaultImage(self):
-        return self.convertNumpyArray(cv2.imread(os.path.join(os.path.dirname(os.path.realpath(__file__)), DEFAULT_IMAGE)))
-
-    def convertNumpyArray(self, ndarray):
+    def convertNumpyArrayToHTMLTag(self, ndarray):
         _, buffer = cv2.imencode('.jpg', ndarray)
         return buffer.tobytes() # readable by html-img tag
 
-    def getImage(self):
-        self.mutex.acquire() # ensure no writes while copying (adds some delay to the output stream but probably worth it)
-        copy = self.html_img
-        self.mutex.release()
-        return copy # return image
-
-    def _run(self, *args, **kwargs):
-        # self.s.bind(self.address)
-        # sock, addressinfo = self.s.accept()
+    def getImage(self, index):
         while True:
-            # incomingImage = sock.recv(4096)
-            # ndarray = convertBytesToNDArray(incomingImage) # convert incoming image to numpy ndarray
-            ndarray = video_capture.read()[1] # testing purposes (my laptop cam is 1280x720 or 921,600 pixels)
-            new_html = self.convertNumpyArray(ndarray) # assumes ndarray in RGB order already
-            self.mutex.acquire() # we want to hold this mutex for as little time as possible
-            self.html_img = new_html
-            self.mutex.release()
+            self.locks[index].acquire()
+            htmltag = self.convertNumpyArrayToHTMLTag(self.images[index])
+            self.locks[index].release()
+            yield (b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' + htmltag + b'\r\n\r\n')
 
-def gen():
-    while True:
-        yield (b'--frame\r\n'
-                b'Content-Type: image/jpeg\r\n\r\n' + videoServer.getImage() + b'\r\n\r\n')
+def ros2_thread(node):
+    rclpy.spin(node)
+
+def sigint_handler(signal, frame):
+    """
+    SIGINT handler
+    We have to know when to tell rclpy to shut down, because
+    it's in a child thread which would stall the main thread
+    shutdown sequence. So we use this handler to call
+    rclpy.shutdown() and then call the previously-installed
+    SIGINT handler for Flask
+    """
+    rclpy.shutdown()
+    if prev_sigint_handler is not None:
+        prev_sigint_handler(signal)
+
+app = Flask(__name__)
+prev_sigint_handler = signal.signal(signal.SIGINT, sigint_handler)
 
 @app.route('/')
 def index():
@@ -105,8 +94,25 @@ def index():
 @app.route('/camera_1_video_feed')
 def camera_1_video_feed():
     """Video streaming route. Put this in the src attribute of an img tag."""
-    return
-    return Response(gen(),
+    return Response(ros2_node.getImage(0),
+                mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/camera_2_video_feed')
+def camera_1_video_feed():
+    """Video streaming route. Put this in the src attribute of an img tag."""
+    return Response(ros2_node.getImage(1),
+                mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/camera_3_video_feed')
+def camera_1_video_feed():
+    """Video streaming route. Put this in the src attribute of an img tag."""
+    return Response(ros2_node.getImage(2),
+                mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/camera_4_video_feed')
+def camera_1_video_feed():
+    """Video streaming route. Put this in the src attribute of an img tag."""
+    return Response(ros2_node.getImage(3),
                 mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route("/shell")
@@ -122,10 +128,12 @@ def shellCommand():
     print("Sending command result to JS: {}".format(recieved_command_result))
     return {"result": recieved_command_result}
 
-if __name__ == '__main__':
-    global videoServer
-    # videoServer = ImageServer()
-    # time.sleep(0.25)
-    # videoServer.thread.start()
+def main(args=None):
+    global ros2_node
+    rclpy.init(args)
+    ros2_node = Flask_Node()
+    threading.Thread(target=ros2_thread, args=[ros2_node]).start()
     app.run()
+
+if __name__ == "__main__":
     main()
