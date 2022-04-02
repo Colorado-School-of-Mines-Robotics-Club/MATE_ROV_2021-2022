@@ -9,7 +9,7 @@ from cv_bridge import CvBridge
 import cv2
 import os
 
-DEFAULT_IMAGE = cv2.imread(os.path.join(os.path.dirname(os.path.realpath(__file__)), "default.jpg"))
+DEFAULT_IMAGE = cv2.imread("default.jpg")
 
 class Flask_Node(Node):
     def __init__(self) -> None:
@@ -98,19 +98,19 @@ def camera_1_video_feed():
                 mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/camera_2_video_feed')
-def camera_1_video_feed():
+def camera_2_video_feed():
     """Video streaming route. Put this in the src attribute of an img tag."""
     return Response(ros2_node.getImage(1),
                 mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/camera_3_video_feed')
-def camera_1_video_feed():
+def camera_3_video_feed():
     """Video streaming route. Put this in the src attribute of an img tag."""
     return Response(ros2_node.getImage(2),
                 mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/camera_4_video_feed')
-def camera_1_video_feed():
+def camera_4_video_feed():
     """Video streaming route. Put this in the src attribute of an img tag."""
     return Response(ros2_node.getImage(3),
                 mimetype='multipart/x-mixed-replace; boundary=frame')
@@ -130,7 +130,7 @@ def shellCommand():
 
 def main(args=None):
     global ros2_node
-    rclpy.init(args)
+    rclpy.init(args=args)
     ros2_node = Flask_Node()
     threading.Thread(target=ros2_thread, args=[ros2_node]).start()
     app.run()

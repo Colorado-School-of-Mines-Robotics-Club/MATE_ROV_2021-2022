@@ -1,4 +1,5 @@
 from setuptools import setup
+from glob import glob
 
 package_name = 'bs_flask'
 
@@ -10,6 +11,10 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        ('share/' + package_name + '/templates/', glob("templates/*")),
+        ('share/' + package_name + '/static/', glob("static/*")),
+        ('share/' + package_name, [f"{package_name}/default.jpg",f"{package_name}/stylesheet.css"])
+
     ],
     install_requires=['setuptools'],
     zip_safe=True,
