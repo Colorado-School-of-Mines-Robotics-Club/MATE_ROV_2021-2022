@@ -1,3 +1,4 @@
+import os
 from setuptools import setup
 from glob import glob
 
@@ -11,11 +12,10 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        ('share/' + package_name + '/templates/', glob("templates/*")),
         ('share/' + package_name + '/static/', glob("static/*")),
-        ('share/' + package_name, [f"{package_name}/default.jpg",f"{package_name}/stylesheet.css"])
+        ('share/' + package_name, ["default.jpg","stylesheet.css"])
 
-    ],
+    ].__add__([('share/' + package_name + '/' + directory, [os.path.join(directory, file) for file in files]) for directory, _, files in os.walk("templates")]),
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='yameat',

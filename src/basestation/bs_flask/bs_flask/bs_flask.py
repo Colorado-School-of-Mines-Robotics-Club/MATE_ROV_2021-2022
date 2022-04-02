@@ -1,3 +1,5 @@
+from time import sleep
+from ament_index_python import get_package_share_directory
 import rclpy
 import signal
 from rclpy.node import Node
@@ -9,7 +11,9 @@ from cv_bridge import CvBridge
 import cv2
 import os
 
-DEFAULT_IMAGE = cv2.imread("default.jpg")
+FPS = float(30.0)
+PREFIX = get_package_share_directory("bs_flask")
+DEFAULT_IMAGE = cv2.imread(os.path.join(PREFIX,"default.jpg"))
 
 class Flask_Node(Node):
     def __init__(self) -> None:
@@ -18,10 +22,10 @@ class Flask_Node(Node):
 
         # subscriptions to handle receiving images
         self.camera_subscriptions = {
-            "cam0":self.create_subscription(Image, 'cam0_image', self.camera0_callback, 10),
-            "cam1":self.create_subscription(Image, 'cam1_image', self.camera1_callback, 10),
-            "cam2":self.create_subscription(Image, 'cam2_image', self.camera2_callback, 10),
-            "cam3":self.create_subscription(Image, 'cam3_image', self.camera3_callback, 10)
+            "cam0":self.create_subscription(Image, 'cam0_image', self.camera0_callback, 1),
+            "cam1":self.create_subscription(Image, 'cam1_image', self.camera1_callback, 1),
+            "cam2":self.create_subscription(Image, 'cam2_image', self.camera2_callback, 1),
+            "cam3":self.create_subscription(Image, 'cam3_image', self.camera3_callback, 1)
         }
 
         # publishers to control activation of cameras
@@ -35,6 +39,9 @@ class Flask_Node(Node):
         self.images = [DEFAULT_IMAGE, DEFAULT_IMAGE, DEFAULT_IMAGE, DEFAULT_IMAGE]
         self.locks = [threading.Lock(), threading.Lock(), threading.Lock(), threading.Lock()]
     
+    def freeze_catcher():
+        pass
+
     def camera0_callback(self, msg:Image):
         self.locks[0].acquire()
         self.images[0] = self.br.imgmsg_to_cv2(msg)
@@ -61,6 +68,7 @@ class Flask_Node(Node):
 
     def getImage(self, index):
         while True:
+            sleep(1/FPS)
             self.locks[index].acquire()
             htmltag = self.convertNumpyArrayToHTMLTag(self.images[index])
             self.locks[index].release()
@@ -83,13 +91,13 @@ def sigint_handler(signal, frame):
     if prev_sigint_handler is not None:
         prev_sigint_handler(signal)
 
-app = Flask(__name__)
+app = Flask(PREFIX,template_folder=PREFIX+"/templates",static_folder=PREFIX+"/static")
 prev_sigint_handler = signal.signal(signal.SIGINT, sigint_handler)
 
 @app.route('/')
 def index():
     """Video streaming"""
-    return render_template('index.html')
+    return render_template("index.html")
 
 @app.route('/camera_1_video_feed')
 def camera_1_video_feed():
