@@ -6,6 +6,53 @@ import os
 import socket
 from threading import Thread, Lock
 import time
+import Jetson.GPIO as GPIO
+import dbus
+import rclpy
+from rclpy.node import Node
+
+from sensor_msgs.msg import Image
+from std_msgs.msg import Bool
+
+import flask
+
+class Flask_Node(Node):
+    def __init__(self) -> None:
+        super().__init__(node_name="basestation_flask")
+
+        # subscriptions to handle receiving images
+        self.camera_subscriptions = {
+            "cam0":self.create_subscription(Image, 'cam0_image', self.camera0_callback, 10),
+            "cam1":self.create_subscription(Image, 'cam1_image', self.camera0_callback, 10),
+            "cam2":self.create_subscription(Image, 'cam2_image', self.camera0_callback, 10),
+            "cam3":self.create_subscription(Image, 'cam3_image', self.camera0_callback, 10)
+        }
+
+        # publishers to control activation of cameras
+        self.camera_control = {
+            "cam0":self.create_publisher(Bool, "cam0_control", 10),
+            "cam1":self.create_publisher(Bool, "cam0_control", 10),
+            "cam2":self.create_publisher(Bool, "cam0_control", 10),
+            "cam3":self.create_publisher(Bool, "cam0_control", 10)
+        }
+
+    def camera0_callback(self, msg:Image):
+        pass
+    
+    def camera1_callback(self, msg:Image):
+        pass
+
+    def camera2_callback(self, msg:Image):
+        pass
+
+    def camera3_callback(self, msg:Image):
+        pass
+
+    def flask_server(self):
+        pass
+
+def main():
+    print('Hi from bs_flask.')
 
 DEFAULT_IMAGE = "default.jpg"
 
@@ -81,3 +128,4 @@ if __name__ == '__main__':
     # time.sleep(0.25)
     # videoServer.thread.start()
     app.run()
+    main()
