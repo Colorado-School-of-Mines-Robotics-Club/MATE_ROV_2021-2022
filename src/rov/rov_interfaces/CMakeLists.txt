@@ -27,6 +27,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ManipulatorSetpoints.msg"
   "msg/ThrusterSetpoints.msg"
   "msg/PWM.msg"
+  "msg/JetsonNanoStatistics.msg"
   "srv/CreateContinuousServo.srv"
   "srv/CreateServo.srv"
 )
