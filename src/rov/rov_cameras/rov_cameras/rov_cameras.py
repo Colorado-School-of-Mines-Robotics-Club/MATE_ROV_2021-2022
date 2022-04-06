@@ -9,8 +9,6 @@ from cv_bridge import CvBridge
 import cv2
 import glob
 
-import asyncio
-
 FPS = float(30.0)
 
 class ROVCameras(Node):

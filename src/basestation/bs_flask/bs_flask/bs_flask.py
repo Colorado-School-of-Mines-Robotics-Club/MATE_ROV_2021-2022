@@ -1,5 +1,4 @@
 from time import sleep
-from unittest.mock import DEFAULT
 from ament_index_python import get_package_share_directory
 import rclpy
 import signal
