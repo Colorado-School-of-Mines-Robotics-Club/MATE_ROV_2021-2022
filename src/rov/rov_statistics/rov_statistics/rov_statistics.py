@@ -39,6 +39,8 @@ class ROV_Statistics(Node):
             for entry in entries:
                 print("    %-20s %s °C (high = %s °C, critical = %s °C)" % (entry.label or name, entry.current, entry.high, entry.critical))
             print()
+
+        self.statistics_publisher.publish(msg)
     
     def power_draw(self, msg:Float32):
         self.power_draw_result = msg
