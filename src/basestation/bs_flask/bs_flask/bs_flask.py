@@ -11,6 +11,8 @@ from cv_bridge import CvBridge
 import cv2
 import os
 
+from rov_interfaces.msg import JetsonNanoStatistics
+
 FPS = float(30.0)
 PREFIX = get_package_share_directory("bs_flask")
 DEFAULT_IMAGE = cv2.imread(os.path.join(PREFIX,"default.jpg"))
@@ -40,13 +42,46 @@ class Flask_Node(Node):
             "cam2":self.create_publisher(Bool, "cam2_control", 10),
             "cam3":self.create_publisher(Bool, "cam3_control", 10)
         }
+
         tmp = convertNumpyArrayToHTMLTag(DEFAULT_IMAGE)
         self.htmltags = [tmp, tmp, tmp, tmp]
         self.image_dirty = [False, False, False, False]
-        self.locks = [threading.Lock(), threading.Lock(), threading.Lock(), threading.Lock()]
+        self.html_locks = [threading.Lock(), threading.Lock(), threading.Lock(), threading.Lock()]
+
+        self.rov_statistics_subscriber = self.create_subscription(JetsonNanoStatistics, "rov_statistics", self.rov_statistics_callback, 2)
+        self.rov_statistics = JetsonNanoStatistics()
+        self.rov_statistics_lock = threading.Lock()
+
 
         self.are_we_frozen = self.create_timer(3, self.freeze_catcher)
     
+    # ouch my eyes
+    def rov_statistics_callback(self, msg:JetsonNanoStatistics):
+        self.rov_statistics_lock.acquire()
+        self.rov_statistics.power_draw = msg.power_draw
+        self.rov_statistics.cpu_usage = msg.cpu_usage
+        self.rov_statistics.cur_cpu_freq = msg.cur_cpu_freq
+        self.rov_statistics.min_cpu_freq = msg.min_cpu_freq
+        self.rov_statistics.max_cpu_freq = msg.max_cpu_freq
+        self.rov_statistics.memory_usage = msg.memory_usage
+        self.rov_statistics.cpu_package_cur_temp = msg.cpu_package_cur_temp
+        self.rov_statistics.cpu_package_max_temp = msg.cpu_package_max_temp
+        self.rov_statistics.cpu_package_min_temp = msg.cpu_package_min_temp
+        self.rov_statistics.cpu_core0_cur_temp = msg.cpu_core0_cur_temp
+        self.rov_statistics.cpu_core0_max_temp = msg.cpu_core0_max_temp
+        self.rov_statistics.cpu_core0_crit_temp = msg.cpu_core0_crit_temp
+        self.rov_statistics.cpu_core1_cur_temp = msg.cpu_core1_cur_temp
+        self.rov_statistics.cpu_core1_max_temp = msg.cpu_core1_max_temp
+        self.rov_statistics.cpu_core1_crit_temp = msg.cpu_core1_crit_temp
+        self.rov_statistics.cpu_core2_cur_temp = msg.cpu_core2_cur_temp
+        self.rov_statistics.cpu_core2_max_temp = msg.cpu_core2_max_temp
+        self.rov_statistics.cpu_core2_crit_temp = msg.cpu_core2_crit_temp
+        self.rov_statistics.cpu_core3_cur_temp = msg.cpu_core3_cur_temp
+        self.rov_statistics.cpu_core3_max_temp = msg.cpu_core3_max_temp
+        self.rov_statistics.cpu_core3_crit_temp = msg.cpu_core3_crit_temp
+        self.rov_statistics_lock.release()
+            
+
     def freeze_catcher(self):
         for i in range(0,4):
             if(self.image_dirty[i] != True):
@@ -62,35 +97,35 @@ class Flask_Node(Node):
         self.camera_control[index].publish(msg)
 
     def camera0_callback(self, msg:Image):
-        self.locks[0].acquire()
+        self.html_locks[0].acquire()
         self.htmltags[0] = convertNumpyArrayToHTMLTag(self.br.imgmsg_to_cv2(msg))
         self.image_dirty[0] = True
-        self.locks[0].release()
+        self.html_locks[0].release()
 
     def camera1_callback(self, msg:Image):
-        self.locks[1].acquire()
+        self.html_locks[1].acquire()
         self.htmltags[1] = convertNumpyArrayToHTMLTag(self.br.imgmsg_to_cv2(msg))
         self.image_dirty[1] = True
-        self.locks[1].release()
+        self.html_locks[1].release()
 
     def camera2_callback(self, msg:Image):
-        self.locks[2].acquire()
+        self.html_locks[2].acquire()
         self.htmltags[2] = convertNumpyArrayToHTMLTag(self.br.imgmsg_to_cv2(msg))
         self.image_dirty[2] = True
-        self.locks[2].release()
+        self.html_locks[2].release()
 
     def camera3_callback(self, msg:Image):
-        self.locks[3].acquire()
+        self.html_locks[3].acquire()
         self.htmltags[3] = convertNumpyArrayToHTMLTag(self.br.imgmsg_to_cv2(msg))
         self.image_dirty[3] = True
-        self.locks[3].release()
+        self.html_locks[3].release()
 
     def getImage(self, index):
         while True:
             sleep(1/FPS)
-            self.locks[index].acquire()
+            self.html_locks[index].acquire()
             htmltag = self.htmltags[index]
-            self.locks[index].release()
+            self.html_locks[index].release()
             yield (b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + htmltag + b'\r\n\r\n')
 
