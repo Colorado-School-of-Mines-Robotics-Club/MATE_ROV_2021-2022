@@ -9,6 +9,7 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Bool
 from cv_bridge import CvBridge
 import cv2
+from std_msgs.msg import String
 import glob
 
 FPS = float(30.0)
@@ -20,12 +21,13 @@ class ROVCameras(Node):
         self.disconnected_cameras = set()
         self.construct_cameras()
         self.br = CvBridge()
+        self.string_pub = self.create_publisher(String, "test", 1)
 
         self.camera_publishers = {
-            "cam0":self.create_publisher(Image, "cam0_image", 1),
-            "cam1":self.create_publisher(Image, "cam1_image", 1),
-            "cam2":self.create_publisher(Image, "cam2_image", 1),
-            "cam3":self.create_publisher(Image, "cam3_image", 1)
+            "cam0":self.create_publisher(Image, "cam0_image", 10),
+            "cam1":self.create_publisher(Image, "cam1_image", 10),
+            "cam2":self.create_publisher(Image, "cam2_image", 10),
+            "cam3":self.create_publisher(Image, "cam3_image", 10)
         }
 
         self.camera0_control_subscriber = self.create_subscription(Bool, "cam0_control", self.cam0_control, 10)
@@ -62,16 +64,8 @@ class ROVCameras(Node):
         for i,camera in enumerate(self.active_cameras):
             ret, frame = self.cameras[int(camera[-1])].read()
             if(ret):
+                self.string_pub.publish(String(data=  "Hey there's a message"))
                 self.camera_publishers[camera].publish(self.br.cv2_to_imgmsg(frame))
-            else:
-                # TODO: implement checking if this camera was disconnected -> asynchronous reconstruction of lost camera object
-                if(not camera.isOpened()):
-                    # it has been disconnected, try to recapture
-                    threading.Thread(name=f"reconnect_cam{i}",target=self.reconnect_cam, args=(self,i,self.captured_cam_events[i]),daemon=True).start()
-                pass
-    
-    def reconnect_cam(self, index, cameraPath):
-        self.cameras[index]=cv2.VideoCapture(cameraPath)
 
     def controlCam(self, cam:int, msg:Bool):
         if(f"cam{cam}" in self.active_cameras and not msg.data):
