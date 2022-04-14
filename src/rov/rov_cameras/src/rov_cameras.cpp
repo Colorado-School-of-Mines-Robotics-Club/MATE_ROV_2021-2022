@@ -82,7 +82,43 @@ private:
                 this->image_publishers[camera]->publish(msg);
             } else {
                 // camera didnt grab frame??? 
-                // TODO: release camera, reconstruct object, insert object, try again (on a timer)
+                this->cameras[camera]->release();
+                usleep(100*1000); // sleep for 100 milliseconds
+
+                // collect the video devices
+                glob_t glob_result;
+                memset(&glob_result, 0, sizeof(glob_result));
+                int ret_val = glob("/dev/video?", GLOB_TILDE, NULL, &glob_result);
+
+                // error handling
+                if(ret_val != 0) {
+                    globfree(&glob_result);
+                    continue;
+                }
+
+                // collect filenames of cameras in /dev/
+                std::vector<std::string> filenames;
+                for(size_t i = 0; i < glob_result.gl_pathc; i++) {
+                    filenames.push_back(std::string(glob_result.gl_pathv[i]));
+                }
+
+                // glob cleanup
+                globfree(&glob_result);
+
+                // test filenames to see if camera is available
+                for(std::string camera_path : filenames) {
+                    std::string pipeline = std::string("v4l2src device="+camera_path+" io-mode=2 ! avdec_mjpeg ! videoconvert ! video/x-raw,format=BGR,height=240,width=320,framerate=30/1 ! appsink");
+                    std::shared_ptr<cv::VideoCapture> camera_device = std::make_shared<cv::VideoCapture>(pipeline, cv::CAP_GSTREAMER);
+                    usleep(1000 * 1000); // ensure camera is captured and opened
+                    if(!camera_device->isOpened()) {
+                        RCLCPP_DEBUG(this->get_logger(), "%s is not a camera or could not be opened (might already be in use).", camera_path);
+                    } else {
+                        camera_device->set(cv::CAP_PROP_FRAME_WIDTH,320);
+                        camera_device->set(cv::CAP_PROP_FRAME_HEIGHT,240);
+                        RCLCPP_DEBUG(this->get_logger(), "%s successfully opened as video capture object", camera_path);
+                        this->cameras[camera] = camera_device;
+                    }
+                }
             }
         }
     }
