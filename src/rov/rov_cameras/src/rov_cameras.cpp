@@ -130,12 +130,12 @@ private:
         assert(this->cameras.size() <= 4);
     }
 
-    auto encodeImage(cv::Mat image, std::string& frame_id) {
-        std_msgs::msg::Header header;
-        header.frame_id = frame_id;
-        header.stamp = this->now();
-        return cv_bridge::CvImage(header, "bgr8", image).toCompressedImageMsg(cv_bridge::JPG);
-    }
+    // auto encodeImage(cv::Mat image, std::string& frame_id) {
+    //     std_msgs::msg::Header header;
+    //     header.frame_id = frame_id;
+    //     header.stamp = this->now();
+    //     return cv_bridge::CvImage(header, "bgr8", image).toCompressedImageMsg(cv_bridge::JPG);
+    // }
 
     std::vector<std::thread> workers;
     std::vector<std::shared_ptr<cv::VideoCapture>> cameras;

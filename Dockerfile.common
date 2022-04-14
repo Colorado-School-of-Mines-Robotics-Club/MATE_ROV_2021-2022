@@ -59,4 +59,13 @@ RUN wget https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_
     rm -rf boost_1_78_0
 
 # python dependencies
+RUN apt-get install libdbus-1-dev
 RUN python3.6 -m pip install dbus-python
+
+# set defaults
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 0 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 0 && \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 0
+RUN update-alternatives --set python3 /usr/bin/python3.6 && \
+    update-alternatives --set g++ /usr/bin/g++-11 && \
+    update-alternatives --set gcc /usr/bin/gcc-11
