@@ -3,8 +3,8 @@ from ament_index_python import get_package_share_directory
 import rclpy
 import signal
 from rclpy.node import Node
-from std_msgs.msg import Bool
-from sensor_msgs.msg import Image
+from std_msgs.msg import Bool, String
+from sensor_msgs.msg import CompressedImage
 import threading
 from flask import Flask, request, render_template, render_template_string, Response
 from cv_bridge import CvBridge
@@ -19,7 +19,7 @@ DEFAULT_IMAGE = cv2.imread(os.path.join(PREFIX,"default.jpg"))
 FROZEN_IMAGE = cv2.imread(os.path.join(PREFIX,"frozen.jpg"))
 
 def convertNumpyArrayToHTMLTag(ndarray):
-    _, buffer = cv2.imencode('.jpg', ndarray)
+    _, buffer = cv2.imencode('.jpg', ndarray) #TODO: this can be simplified?? compressed image msg is already sent as a JPG....save time maybe??
     return buffer.tobytes() # readable by html-img tag
 
 class Flask_Node(Node):
@@ -29,11 +29,13 @@ class Flask_Node(Node):
 
         # subscriptions to handle receiving images
         self.camera_subscriptions = {
-            "cam0":self.create_subscription(Image, 'cam0_image', self.camera0_callback, 1),
-            "cam1":self.create_subscription(Image, 'cam1_image', self.camera1_callback, 1),
-            "cam2":self.create_subscription(Image, 'cam2_image', self.camera2_callback, 1),
-            "cam3":self.create_subscription(Image, 'cam3_image', self.camera3_callback, 1)
+            "cam0":self.create_subscription(CompressedImage, 'cam0_image', self.camera0_callback, 10),
+            "cam1":self.create_subscription(CompressedImage, 'cam1_image', self.camera1_callback, 10),
+            "cam2":self.create_subscription(CompressedImage, 'cam2_image', self.camera2_callback, 10),
+            "cam3":self.create_subscription(CompressedImage, 'cam3_image', self.camera3_callback, 10)
         }
+
+        self.test_sub = self.create_subscription(String, "test", self.test, 10)
 
         # publishers to control activation of cameras
         self.camera_control = {
@@ -52,9 +54,11 @@ class Flask_Node(Node):
         self.rov_statistics = JetsonNanoStatistics()
         self.rov_statistics_lock = threading.Lock()
 
-
-        self.are_we_frozen = self.create_timer(3, self.freeze_catcher)
+        # self.are_we_frozen = self.create_timer(3, self.freeze_catcher)
     
+    def test(self, msg):
+        print(msg.data)
+
     # ouch my eyes
     def rov_statistics_callback(self, msg:JetsonNanoStatistics):
         self.rov_statistics_lock.acquire()
@@ -80,7 +84,6 @@ class Flask_Node(Node):
         self.rov_statistics.cpu_core3_max_temp = msg.cpu_core3_max_temp
         self.rov_statistics.cpu_core3_crit_temp = msg.cpu_core3_crit_temp
         self.rov_statistics_lock.release()
-            
 
     def freeze_catcher(self):
         for i in range(0,4):
@@ -96,27 +99,27 @@ class Flask_Node(Node):
         msg.data=onoff
         self.camera_control[index].publish(msg)
 
-    def camera0_callback(self, msg:Image):
+    def camera0_callback(self, msg:CompressedImage):
         self.html_locks[0].acquire()
-        self.htmltags[0] = convertNumpyArrayToHTMLTag(self.br.imgmsg_to_cv2(msg))
+        self.htmltags[0] = convertNumpyArrayToHTMLTag(self.br.compressed_imgmsg_to_cv2(msg))
         self.image_dirty[0] = True
         self.html_locks[0].release()
 
-    def camera1_callback(self, msg:Image):
+    def camera1_callback(self, msg:CompressedImage):
         self.html_locks[1].acquire()
-        self.htmltags[1] = convertNumpyArrayToHTMLTag(self.br.imgmsg_to_cv2(msg))
+        self.htmltags[1] = convertNumpyArrayToHTMLTag(self.br.compressed_imgmsg_to_cv2(msg))
         self.image_dirty[1] = True
         self.html_locks[1].release()
 
-    def camera2_callback(self, msg:Image):
+    def camera2_callback(self, msg:CompressedImage):
         self.html_locks[2].acquire()
-        self.htmltags[2] = convertNumpyArrayToHTMLTag(self.br.imgmsg_to_cv2(msg))
+        self.htmltags[2] = convertNumpyArrayToHTMLTag(self.br.compressed_imgmsg_to_cv2(msg))
         self.image_dirty[2] = True
         self.html_locks[2].release()
 
-    def camera3_callback(self, msg:Image):
+    def camera3_callback(self, msg:CompressedImage):
         self.html_locks[3].acquire()
-        self.htmltags[3] = convertNumpyArrayToHTMLTag(self.br.imgmsg_to_cv2(msg))
+        self.htmltags[3] = convertNumpyArrayToHTMLTag(self.br.compressed_imgmsg_to_cv2(msg))
         self.image_dirty[3] = True
         self.html_locks[3].release()
 
