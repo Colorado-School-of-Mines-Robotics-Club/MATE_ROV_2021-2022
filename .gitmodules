@@ -2,7 +2,3 @@
 	path = src/external/joystick_drivers
 	url = https://github.com/Colorado-School-of-Mines-Robotics-Club/joystick_drivers
 	branch = foxy-devel
-[submodule "src/external/SMACC2"]
-	path = src/external/SMACC2
-	url = https://github.com/robosoft-ai/SMACC2.git
-	branch = foxy
