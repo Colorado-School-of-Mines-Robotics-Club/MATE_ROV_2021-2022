@@ -1,6 +1,7 @@
-float32 fx
-float32 fy
-float32 fz
-float32 tx
-float32 ty
-float32 tz
+float64 vx
+float64 vy
+float64 vz
+float64 w
+float64 i
+float64 j
+float64 k
