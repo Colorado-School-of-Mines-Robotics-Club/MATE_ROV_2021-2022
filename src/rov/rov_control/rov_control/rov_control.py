@@ -165,6 +165,9 @@ class ROV_Control(Node):
         self.last_manip = manip_setpoints
 
     def do_thrust_setpoint_update(self, joystick: ParsedJoy):
+        thrust_setpoints = ThrusterSetpoints()
+        
+        thrust_setpoints.
         pass
 
     def estop_callback(self, msg):
