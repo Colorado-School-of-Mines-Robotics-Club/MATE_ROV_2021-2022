@@ -31,9 +31,9 @@ namespace {
 class BNO055_Node : public rclcpp::Node {
 public:
     BNO055_Node() : Node("bno055_node"), bno(-1, BNO055_ADDRESS_A) {
-        this->bno_publisher = this->create_publisher<rov_interfaces::msg::BNO055Data>("bno055_data", 10);
+        this->bno_publisher = this->create_publisher<rov_interfaces::msg::BNO055Data>("bno055_data", rclcpp::SensorDataQoS());
 
-        this->create_wall_timer(101ms, std::bind(&BNO055_Node::bno_callback, this));
+        this->create_wall_timer(100ms, std::bind(&BNO055_Node::bno_callback, this));
     }
 
 private:
