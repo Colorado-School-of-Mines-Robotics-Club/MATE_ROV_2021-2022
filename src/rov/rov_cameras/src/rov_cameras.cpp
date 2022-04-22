@@ -19,8 +19,6 @@
 
 #include <opencv2/opencv.hpp>
 
-using std::placeholders::_1;
-
 using namespace std::chrono_literals;
 
 class ROV_Cameras : public rclcpp::Node {
@@ -35,10 +33,14 @@ public:
         this->image_publishers.emplace(std::make_pair(3, this->create_publisher<sensor_msgs::msg::CompressedImage>("cam3_image",10)));
 
         // create camera control subscribers
-        this->camera_controllers.emplace(std::make_pair(0, this->create_subscription<std_msgs::msg::Bool>("cam0_control", 10, std::bind(&ROV_Cameras::camera_control, this, 0, _1))));
-        this->camera_controllers.emplace(std::make_pair(1, this->create_subscription<std_msgs::msg::Bool>("cam1_control", 10, std::bind(&ROV_Cameras::camera_control, this, 1, _1))));
-        this->camera_controllers.emplace(std::make_pair(2, this->create_subscription<std_msgs::msg::Bool>("cam2_control", 10, std::bind(&ROV_Cameras::camera_control, this, 2, _1))));
-        this->camera_controllers.emplace(std::make_pair(3, this->create_subscription<std_msgs::msg::Bool>("cam3_control", 10, std::bind(&ROV_Cameras::camera_control, this, 3, _1))));
+        std::function<void(const std_msgs::msg::Bool::SharedPtr)> callback0 = std::bind(&ROV_Cameras::camera_control, this, 0, std::placeholders::_1);
+        this->create_subscription<std_msgs::msg::Bool>("cam0_control", 10, callback0);
+        std::function<void(const std_msgs::msg::Bool::SharedPtr)> callback1 = std::bind(&ROV_Cameras::camera_control, this, 1, std::placeholders::_1);
+        this->create_subscription<std_msgs::msg::Bool>("cam1_control", 10, callback1);
+        std::function<void(const std_msgs::msg::Bool::SharedPtr)> callback2 = std::bind(&ROV_Cameras::camera_control, this, 2, std::placeholders::_1);
+        this->create_subscription<std_msgs::msg::Bool>("cam2_control", 10, callback2);
+        std::function<void(const std_msgs::msg::Bool::SharedPtr)> callback3 = std::bind(&ROV_Cameras::camera_control, this, 3, std::placeholders::_1);
+        this->create_subscription<std_msgs::msg::Bool>("cam3_control", 10, callback3);
 
         // Create worker threads
         this->workers.push_back(std::thread(std::bind(&ROV_Cameras::camera_callback, this, 0, std::reference_wrapper<bool>(this->running))));
@@ -67,9 +69,9 @@ private:
 
     }
 
-    void camera_control(int cam, std_msgs::msg::Bool state) {
+    void camera_control(int cam, const std_msgs::msg::Bool::SharedPtr state) {
         std::lock_guard<std::mutex>(this->should_camera_run_mutex[cam]);
-        this->should_camera_run[cam] = state.data;
+        this->should_camera_run[cam] = state->data;
     }
 
     void camera_callback(int camera, std::reference_wrapper<bool> shouldBeRunning) {
@@ -194,7 +196,6 @@ private:
     std::array<bool, 4> should_camera_run = {true, true, true, true};
     std::array<std::mutex, 4> should_camera_run_mutex;
     std::unordered_map<int, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::CompressedImage>>> image_publishers;
-    std::unordered_map<int, std::shared_ptr<rclcpp::Subscription<std_msgs::msg::Bool>>> camera_controllers;
     bool running = true;
 };
 
