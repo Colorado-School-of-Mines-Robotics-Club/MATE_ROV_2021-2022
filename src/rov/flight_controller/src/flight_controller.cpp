@@ -16,7 +16,7 @@
 #include "rov_interfaces/msg/pwm.hpp"
 #include "rov_interfaces/srv/create_continuous_servo.hpp"
 
-#include "Thruster.hpp"
+#include "flight_controller/Thruster.hpp"
 
 using namespace std::chrono_literals;
 

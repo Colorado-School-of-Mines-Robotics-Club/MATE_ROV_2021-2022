@@ -5,7 +5,7 @@
 
 struct Thruster {
     Thruster();
-    Thruster(Eigen::Vector3d position, Eigen::Vector3d thrust);
+    Thruster(Eigen::Vector3d position, Eigen::Vector3d maximum_thrust);
     Eigen::Vector3d position;
     Eigen::Vector3d maximum_thrust;
 };
