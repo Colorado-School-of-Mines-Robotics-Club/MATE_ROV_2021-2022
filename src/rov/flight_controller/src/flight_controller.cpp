@@ -205,6 +205,9 @@ private:
         forcesAndTorques(5,0) = desired_torque.z();
         
         Eigen::Matrix<double, 6, 1> throttles = this->thruster_geometry_inverse * forcesAndTorques;
+        // normalize throttles such that it satisfies -1 <= throttles[j] <= 1 while scaling thrusters to account for large thrust demands on a single thruster
+        double maxThrottle = throttles.cwiseAbs().maxCoeff();
+        throttles = throttles / maxThrottle;
 
         // publish PWM values
         for(int i = 0; i < NUM_THRUSTERS; i++) {
