@@ -1,9 +1,6 @@
 #ifndef BNO055_HPP
 #define BNO055_HPP
 
-#include "Vector3.hpp"
-#include "Quaternion.hpp"
-
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
@@ -11,6 +8,8 @@
 #include <limits.h>
 #include <iostream>
 #include <cstring>
+
+#include <eigen3/Eigen/Dense>
 
 extern "C" {
     #include <linux/i2c-dev.h>
@@ -286,8 +285,9 @@ public:
     void displaySystemStatus();
     void getCalibration(uint8_t* sys, uint8_t* gyro, uint8_t* accel, uint8_t* mag);
 
-    csmutil::Vector3d getVector(Vector_Type type);
-    csmutil::Quaterniond getQuat();
+    
+    Eigen::Vector3d getVector(Vector_Type type);
+    Eigen::Quaterniond getQuat();
     int8_t getTemp();
 
     bool getSensorOffsets(uint8_t* calibData);

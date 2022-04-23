@@ -10,19 +10,19 @@ using namespace std::chrono_literals;
 
 // create cursed functions only available in this translation unit
 namespace {
-    rov_interfaces::msg::VectorD toVectorDMSG(const csmutil::Vector3d vector) {
+    rov_interfaces::msg::VectorD toVectorDMSG(const Eigen::Vector3d vector) {
         auto toret = rov_interfaces::msg::VectorD();
-        toret.i = vector.getI();
-        toret.j = vector.getJ();
-        toret.k = vector.getK();
+        toret.i = vector.x();
+        toret.j = vector.y();
+        toret.k = vector.z();
         return toret;
     }
-    rov_interfaces::msg::QuaternionD toQuatDMSG(const csmutil::Quaterniond quat) {
+    rov_interfaces::msg::QuaternionD toQuatDMSG(const Eigen::Quaterniond quat) {
         auto toret = rov_interfaces::msg::QuaternionD();
-        toret.w = quat.getW();
-        toret.i = quat.getI();
-        toret.j = quat.getJ();
-        toret.k = quat.getK();
+        toret.w = quat.w();
+        toret.i = quat.x();
+        toret.j = quat.y();
+        toret.k = quat.z();
         return toret;
     }
 }
