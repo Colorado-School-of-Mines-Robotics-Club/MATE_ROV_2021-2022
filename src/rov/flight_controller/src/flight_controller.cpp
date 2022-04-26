@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
@@ -18,8 +19,6 @@
 
 #include "flight_controller/Thruster.hpp"
 
-using namespace std::chrono_literals;
-
 #define NUM_THRUSTERS 8
 #define MASS 100
 #define IXX 100
@@ -31,6 +30,11 @@ using namespace std::chrono_literals;
 #define IZX 100
 #define IZY 100
 #define IZZ 100
+
+#define MIN_THRUST_VALUE -28.44
+#define MAX_THRUST_VALUE 36.4
+#define MIN_THROTTLE_CUTOFF -0.3
+#define MAX_THROTTLE_CUTOFF 0.4
 
 class FlightController : public rclcpp::Node {
 public:
@@ -74,7 +78,8 @@ public:
         };
 
         this->thruster_geometry = concatThrusterGeometry(this->thrusters);
-        // this->thruster_geometry_inverse = this->thruster_geometry.inverse();
+        // compute the full pivoting LU decomposition of the thruster geometry
+        this->thruster_geometry_full_piv_lu = std::make_shared<Eigen::FullPivLU<Eigen::Matrix<double, 6, NUM_THRUSTERS>> const>(this->thruster_geometry.fullPivLu());
 
         // use PWM service to register thrusters on PCA9685
         this->registerThrusters();
@@ -90,7 +95,7 @@ public:
         sync.setMaxIntervalDuration(rclcpp::Duration(0.15,0));
         sync.registerCallback(std::bind(&FlightController::update, this, std::placeholders::_1, std::placeholders::_2));
 
-        stall_detector = this->create_wall_timer(250ms, std::bind(&FlightController::StallDetector, this));
+        stall_detector = this->create_wall_timer(std::chrono::milliseconds(250), std::bind(&FlightController::StallDetector, this));
     }
 private:
     void registerThrusters() {
@@ -101,7 +106,7 @@ private:
             auto req = std::make_shared<rov_interfaces::srv::CreateContinuousServo_Request>();
             req->channel = i;
             // ensure service is not busy
-            while(!pca9685->wait_for_service(1s)) {
+            while(!pca9685->wait_for_service(std::chrono::milliseconds(100))) {
                 if (!rclcpp::ok()) {
                     RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for the service. Exiting.");
                     exit(0);
@@ -203,11 +208,10 @@ private:
         forcesAndTorques(3,0) = desired_torque.x();
         forcesAndTorques(4,0) = desired_torque.y();
         forcesAndTorques(5,0) = desired_torque.z();
-        
-        Eigen::Matrix<double, 6, 1> throttles = this->thruster_geometry_inverse * forcesAndTorques;
-        // normalize throttles such that it satisfies -1 <= throttles[j] <= 1 while scaling thrusters to account for large thrust demands on a single thruster
-        double maxThrottle = throttles.cwiseAbs().maxCoeff();
-        throttles = throttles / maxThrottle;
+
+        // solve Ax = b andnormalize thrust such that it satisfies MIN_THRUST_VALUE <= throttles[j] <= MAX_THRUST_VALUE 
+        // while scaling thrusters to account for large thrust demands on a single thruster        
+        Eigen::Matrix<double, NUM_THRUSTERS, 1> throttles = thrust2throttle(this->thruster_geometry_full_piv_lu->solve(forcesAndTorques));
 
         // publish PWM values
         for(int i = 0; i < NUM_THRUSTERS; i++) {
@@ -224,6 +228,35 @@ private:
         translation_setpoints_last = this->translation_setpoints;
         attitude_setpoints_last = this->attitude_setpoints;
         quaternion_reference_last = this->quaternion_reference;
+    }
+
+    Eigen::Matrix<double,NUM_THRUSTERS,1> thrust2throttle(Eigen::Matrix<double, NUM_THRUSTERS, 1> thrust) {
+        Eigen::Index loc;
+        thrust.minCoeff(&loc);
+        double ratioA = std::abs(MIN_THRUST_VALUE / std::min(thrust(loc), MIN_THRUST_VALUE));
+        thrust.maxCoeff(&loc);
+        double ratioB = std::abs(MAX_THRUST_VALUE / std::max(thrust(loc), MAX_THRUST_VALUE));
+        if(ratioA > ratioB) {
+            thrust = thrust * ratioA;
+        } else {
+            thrust = thrust * ratioB;
+        }
+
+        // inverse thrust function
+        Eigen::Matrix<double,NUM_THRUSTERS,1> toret;
+        for(int i = 0; i < NUM_THRUSTERS; i++) {
+            if(toret(i,0) < MIN_THROTTLE_CUTOFF) {
+                // see documentation to understand origin of this equation
+                toret(i,0) = -0.0991 + 0.0505 * thrust(i,0) + 1.22e-3 * pow(thrust(i,0),2) + 1.91e-5 * pow(thrust(i,0),3);
+            } else if (toret(i,0) > MAX_THROTTLE_CUTOFF) {
+                // see documentation to understand origin of this equation
+                toret(i,0) = 0.0986 + 0.0408 * thrust(i,0) + -8.14e-4 * pow(thrust(i,0),2) + 1.01e-5 * pow(thrust(i,0),3);
+            } else {
+                toret(i,0) = 0;
+            }
+        }
+
+        return toret;
     }
 
     void StallDetector() {
@@ -254,8 +287,8 @@ private:
     Eigen::Vector3d linear_integral;
     Eigen::Vector3d linear_velocity_err_last;
     std::array<Thruster, NUM_THRUSTERS> thrusters;
-    Eigen::MatrixXd thruster_geometry = Eigen::MatrixXd(6, NUM_THRUSTERS);
-    Eigen::MatrixXd thruster_geometry_inverse = Eigen::MatrixXd(6, NUM_THRUSTERS);
+    Eigen::Matrix<double, 6, NUM_THRUSTERS> thruster_geometry;
+    std::shared_ptr<Eigen::FullPivLU<Eigen::Matrix<double, 6, NUM_THRUSTERS>> const> thruster_geometry_full_piv_lu;
     Eigen::MatrixXd inertia_tensor = Eigen::MatrixXd(3,3);
 
     double Pq = 1.0, Pw = 1.0; // TODO: tune these gain constants
