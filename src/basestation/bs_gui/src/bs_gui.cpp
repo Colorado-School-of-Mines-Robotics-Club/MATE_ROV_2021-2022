@@ -52,7 +52,7 @@ private:
     // responsibility is on you to dispose of pixel buffer after it is changed :)
     cv::Mat* compressed_imgmsg_to_sdl_texture(SDL_Texture* tex, const sensor_msgs::msg::CompressedImage::SharedPtr msg) {
         cv::Mat buf(cv::Size(1,msg->data.size()), CV_8UC1, msg->data.data());
-        cv::Mat* image = &cv::imdecode(buf, cv::IMREAD_ANYCOLOR);
+        cv::Mat* image = new cv::Mat(cv::imdecode(buf, cv::IMREAD_ANYCOLOR));
 
         // or however else you want to do this
         SDL_UpdateTexture(tex, NULL, (void*)image->data, buf.step1());
@@ -60,10 +60,13 @@ private:
     }
 
     void camera_callback(int camera_idx, const sensor_msgs::msg::CompressedImage::SharedPtr msg) {
-
+        camera_idx;
+        msg;
     }
 
     std::shared_ptr<SDL_Renderer> renderer;
+    // can't do this, compiler doesnt like this (undefined struct issue)
+    // FIXME
     std::shared_ptr<SDL_Texture> cam0_image;
     std::shared_ptr<SDL_Texture> cam1_image;
     std::shared_ptr<SDL_Texture> cam2_image;
