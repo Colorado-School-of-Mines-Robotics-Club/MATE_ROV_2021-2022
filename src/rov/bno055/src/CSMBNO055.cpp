@@ -157,8 +157,7 @@ int8_t BNO055::getTemp() {
 /*
 * Read registers that correspond to specified Vector_Type
 */
-csmutil::Vector3d BNO055::getVector(Vector_Type type) {
-    csmutil::Vector3d ijk;
+Eigen::Vector3d BNO055::getVector(Vector_Type type) {
     uint8_t buffer[6];
     memset(buffer, 0, 6);
 
@@ -177,36 +176,36 @@ csmutil::Vector3d BNO055::getVector(Vector_Type type) {
     */
     switch(type) {
         case Vector_Type::MAGNETOMETER:
-            ijk.setComponents(static_cast<double>(i) / 16.0,
-                              static_cast<double>(j) / 16.0,
-                              static_cast<double>(k) / 16.0);
+            return Eigen::Vector3d(static_cast<double>(i) / 16.0,
+                                   static_cast<double>(j) / 16.0,
+                                   static_cast<double>(k) / 16.0);
         break;
         case Vector_Type::GYROSCOPE:
-            ijk.setComponents(static_cast<double>(i) / 900.0,
-                              static_cast<double>(j) / 900.0,
-                              static_cast<double>(k) / 900.0);
+            return Eigen::Vector3d(static_cast<double>(i) / 900.0,
+                                   static_cast<double>(j) / 900.0,
+                                   static_cast<double>(k) / 900.0);
         break;
         case Vector_Type::EULER:
-            ijk.setComponents(static_cast<double>(i) / 16.0,
-                              static_cast<double>(j) / 16.0,
-                              static_cast<double>(k) / 16.0);
+            return Eigen::Vector3d(static_cast<double>(i) / 16.0,
+                                   static_cast<double>(j) / 16.0,
+                                   static_cast<double>(k) / 16.0);
         break;
         case Vector_Type::ACCELEROMETER:
         case Vector_Type::LINEARACCEL:
         case Vector_Type::GRAVITY:
-            ijk.setComponents(static_cast<double>(i) / 100.0,
-                              static_cast<double>(j) / 100.0,
-                              static_cast<double>(k) / 100.0);
+            return Eigen::Vector3d(static_cast<double>(i) / 100.0,
+                                   static_cast<double>(j) / 100.0,
+                                   static_cast<double>(k) / 100.0);
         break;
     }
 
-    return ijk;
+    return Eigen::Vector3d();
 }
 
 /*
 * Get the rotation quaternion for this BNO055
 */
-csmutil::Quaterniond BNO055::getQuat() {
+Eigen::Quaterniond BNO055::getQuat() {
     uint8_t buffer[8];
     memset(buffer, 0, 8);
 
@@ -221,8 +220,7 @@ csmutil::Quaterniond BNO055::getQuat() {
 
     // Use magic number from data sheet to convert unsigned short data to double
     const double scale = (1.0 / (1<<14));
-    csmutil::Quaterniond quat(scale * w, scale * i, scale * j, scale * k);
-    return quat;
+    return Eigen::Quaterniond(scale * w, scale * i, scale * j, scale * k);
 }
 
 /*

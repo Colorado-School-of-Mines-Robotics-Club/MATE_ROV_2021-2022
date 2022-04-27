@@ -10,19 +10,19 @@ using namespace std::chrono_literals;
 
 // create cursed functions only available in this translation unit
 namespace {
-    rov_interfaces::msg::VectorD toVectorDMSG(const csmutil::Vector3d vector) {
+    rov_interfaces::msg::VectorD toVectorDMSG(const Eigen::Vector3d vector) {
         auto toret = rov_interfaces::msg::VectorD();
-        toret.i = vector.getI();
-        toret.j = vector.getJ();
-        toret.k = vector.getK();
+        toret.i = vector.x();
+        toret.j = vector.y();
+        toret.k = vector.z();
         return toret;
     }
-    rov_interfaces::msg::QuaternionD toQuatDMSG(const csmutil::Quaterniond quat) {
+    rov_interfaces::msg::QuaternionD toQuatDMSG(const Eigen::Quaterniond quat) {
         auto toret = rov_interfaces::msg::QuaternionD();
-        toret.w = quat.getW();
-        toret.i = quat.getI();
-        toret.j = quat.getJ();
-        toret.k = quat.getK();
+        toret.w = quat.w();
+        toret.i = quat.x();
+        toret.j = quat.y();
+        toret.k = quat.z();
         return toret;
     }
 }
@@ -31,9 +31,14 @@ namespace {
 class BNO055_Node : public rclcpp::Node {
 public:
     BNO055_Node() : Node("bno055_node"), bno(-1, BNO055_ADDRESS_A) {
-        this->bno_publisher = this->create_publisher<rov_interfaces::msg::BNO055Data>("bno055_data", 10);
+        this->bno_publisher = this->create_publisher<rov_interfaces::msg::BNO055Data>("bno055_data", rclcpp::SensorDataQoS());
 
-        this->create_wall_timer(101ms, std::bind(&BNO055_Node::bno_callback, this));
+        if(!this->bno.begin()) {
+            RCLCPP_FATAL(this->get_logger(), "Unable to start bno055, node exiting");
+            exit(1);
+        }
+
+        bno_timer = this->create_wall_timer(100ms, std::bind(&BNO055_Node::bno_callback, this));
     }
 
 private:
@@ -53,6 +58,7 @@ private:
 
     BNO055 bno;
     std::shared_ptr<rclcpp::Publisher<rov_interfaces::msg::BNO055Data>> bno_publisher;
+    rclcpp::TimerBase::SharedPtr bno_timer;
 };
 
 int main(int argc, char ** argv) {

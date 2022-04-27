@@ -1,16 +1,14 @@
 cmake_minimum_required(VERSION 3.5)
-project(flight_controller)
+project(bs_gui)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
   set(CMAKE_C_STANDARD 99)
 endif()
 
-# Default to C++17
+# Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 17)
-  set(CMAKE_CXX_STANDARD_REQUIRED ON)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+  set(CMAKE_CXX_STANDARD 14)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -19,29 +17,35 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(rov_interfaces REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(message_filters REQUIRED)
-find_package(Eigen3 REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(rov_interfaces REQUIRED)
+find_package(compressed_image_transport REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(SDL2 REQUIRED)
 
-add_executable(flight_controller src/flight_controller.cpp src/Thruster.cpp)
-target_include_directories(flight_controller PUBLIC
+add_executable(bs_gui src/bs_gui.cpp)
+target_include_directories(bs_gui PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+  $<INSTALL_INTERFACE:include>
+  ${SDL2_INCLUDE_DIRS}
+  ${OPENCV_INCLUDE_DIRS})
 ament_target_dependencies(
-  flight_controller
-  "rov_interfaces"
+  bs_gui
   "rclcpp"
-  "message_filters"
+  "std_msgs"
+  "sensor_msgs"
+  "rov_interfaces"
+  "compressed_image_transport"
+  "cv_bridge"
 )
 
-target_link_libraries(flight_controller Eigen3::Eigen)
+target_link_libraries(bs_gui ${OpenCV_LIBS} ${SDL2_LIBRARIES} pthread)
 
-install(TARGETS flight_controller
+install(TARGETS bs_gui
   DESTINATION lib/${PROJECT_NAME})
-
-install(DIRECTORY include/
-  DESTINATION include/)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
