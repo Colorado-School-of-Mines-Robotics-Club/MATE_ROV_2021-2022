@@ -1,6 +1,6 @@
 rov_control:
   ros__parameters:
-    joy_map:
+    mapping:
       trigger: 0
       thumb: 1
       button_3: 2
@@ -34,3 +34,6 @@ rov_control:
 
     translate_speed: 0.2
     rotate_speed: 1
+    deadzone: 0
+    joy_update_hz: 10
+    joy_timeout: 0.5
