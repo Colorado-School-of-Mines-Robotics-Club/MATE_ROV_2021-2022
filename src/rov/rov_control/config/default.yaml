@@ -31,3 +31,6 @@ rov_control:
     wrist_initial: 0
     wrist_max: 90
     clamp_initial: True
+
+    translate_speed: 0.2
+    rotate_speed: 1
