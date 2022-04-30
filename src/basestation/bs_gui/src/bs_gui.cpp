@@ -41,41 +41,28 @@ public:
         camera_control_publishers.emplace(std::make_pair(3, this->create_publisher<std_msgs::msg::Bool>("cam3_control", 10)));
 
         // texture streams for changing buffers
-        this->cam0_image = std::make_shared<SDL_Texture>(SDL_CreateTexture(renderer.get(), SDL_PIXELFORMAT_BGR888, SDL_TEXTUREACCESS_STREAMING, 320, 240));
-        this->cam1_image = std::make_shared<SDL_Texture>(SDL_CreateTexture(renderer.get(), SDL_PIXELFORMAT_BGR888, SDL_TEXTUREACCESS_STREAMING, 320, 240));
-        this->cam2_image = std::make_shared<SDL_Texture>(SDL_CreateTexture(renderer.get(), SDL_PIXELFORMAT_BGR888, SDL_TEXTUREACCESS_STREAMING, 320, 240));
-        this->cam3_image = std::make_shared<SDL_Texture>(SDL_CreateTexture(renderer.get(), SDL_PIXELFORMAT_BGR888, SDL_TEXTUREACCESS_STREAMING, 320, 240));
+        // this->cam0_image = std::make_shared<SDL_Texture>(SDL_CreateTexture(renderer.get(), SDL_PIXELFORMAT_BGR888, SDL_TEXTUREACCESS_STREAMING, 320, 240));
+        // this->cam1_image = std::make_shared<SDL_Texture>(SDL_CreateTexture(renderer.get(), SDL_PIXELFORMAT_BGR888, SDL_TEXTUREACCESS_STREAMING, 320, 240));
+        // this->cam2_image = std::make_shared<SDL_Texture>(SDL_CreateTexture(renderer.get(), SDL_PIXELFORMAT_BGR888, SDL_TEXTUREACCESS_STREAMING, 320, 240));
+        // this->cam3_image = std::make_shared<SDL_Texture>(SDL_CreateTexture(renderer.get(), SDL_PIXELFORMAT_BGR888, SDL_TEXTUREACCESS_STREAMING, 320, 240));
     }
 
-
 private:
-    // responsibility is on you to dispose of pixel buffer after it is changed :)
-    cv::Mat* compressed_imgmsg_to_sdl_texture(SDL_Texture* tex, const sensor_msgs::msg::CompressedImage::SharedPtr msg) {
-        cv::Mat buf(cv::Size(1,msg->data.size()), CV_8UC1, msg->data.data());
-        cv::Mat* image = new cv::Mat(cv::imdecode(buf, cv::IMREAD_ANYCOLOR));
-
-        // or however else you want to do this
-        SDL_UpdateTexture(tex, NULL, (void*)image->data, buf.step1());
-        return image;
+    cv::Mat* msgtomat(const sensor_msgs::msg::CompressedImage::SharedPtr& msg) {
+        cv::Mat bgr(cv::Size(1,msg->data.size()), CV_8UC3, msg->data.data());
+        cv::Mat* rgba = new cv::Mat(cv::Size(1,msg->data.size()), CV_8UC4, msg->data.data());
+        cv::cvtColor(cv::imdecode(bgr, cv::IMREAD_ANYCOLOR), *rgba, cv::COLOR_BGR2RGBA);
+        return rgba;
     }
 
     void camera_callback(int camera_idx, const sensor_msgs::msg::CompressedImage::SharedPtr msg) {
-        camera_idx;
-        msg;
+        cv::Mat* RGBA_IMAGE = msgtomat(msg);
+
+        //todo: display image to screen
     }
-
-    std::shared_ptr<SDL_Renderer> renderer;
-    // can't do this, compiler doesnt like this (undefined struct issue)
-    // FIXME
-    std::shared_ptr<SDL_Texture> cam0_image;
-    std::shared_ptr<SDL_Texture> cam1_image;
-    std::shared_ptr<SDL_Texture> cam2_image;
-    std::shared_ptr<SDL_Texture> cam3_image;
-
     std::unordered_map<int, std::shared_ptr<rclcpp::Subscription<sensor_msgs::msg::CompressedImage>>> camera_image_subscriptions;
     std::unordered_map<int, std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Bool>>> camera_control_publishers;
 };
-
 
 int main(int argc, char ** argv) {
     rclcpp::init(argc, argv);
