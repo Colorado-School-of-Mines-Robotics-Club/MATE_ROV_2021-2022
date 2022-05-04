@@ -56,6 +56,8 @@ class Flask_Node(Node):
 
         self.joystick_subscriber = self.create_subscription(Joy, "joy", self.joystick_callback, 10)
 
+        self.joy_data = Joy()
+
         # self.are_we_frozen = self.create_timer(3, self.freeze_catcher)
     
     def test(self, msg):
@@ -63,7 +65,13 @@ class Flask_Node(Node):
 
     def joystick_callback(self, msg:Joy):
         # do something with joystick data
+        self.joy_data = msg
         pass
+
+    def get_joystick(self):
+        while True:
+            sleep(1/120)
+            yield self.joy_data
 
     # ouch my eyes
     def rov_statistics_callback(self, msg:JetsonNanoStatistics):
