@@ -4,7 +4,7 @@ import rclpy
 import signal
 from rclpy.node import Node
 from std_msgs.msg import Bool, String
-from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import CompressedImage, Joy
 import threading
 from flask import Flask, request, render_template, render_template_string, Response
 from cv_bridge import CvBridge
@@ -54,35 +54,21 @@ class Flask_Node(Node):
         self.rov_statistics = JetsonNanoStatistics()
         self.rov_statistics_lock = threading.Lock()
 
+        self.joystick_subscriber = self.create_subscription(Joy, "joy", self.joystick_callback, 10)
+
         # self.are_we_frozen = self.create_timer(3, self.freeze_catcher)
     
     def test(self, msg):
         print(msg.data)
 
+    def joystick_callback(self, msg:Joy):
+        # do something with joystick data
+        pass
+
     # ouch my eyes
     def rov_statistics_callback(self, msg:JetsonNanoStatistics):
         self.rov_statistics_lock.acquire()
-        self.rov_statistics.power_draw = msg.power_draw
-        self.rov_statistics.cpu_usage = msg.cpu_usage
-        self.rov_statistics.cur_cpu_freq = msg.cur_cpu_freq
-        self.rov_statistics.min_cpu_freq = msg.min_cpu_freq
-        self.rov_statistics.max_cpu_freq = msg.max_cpu_freq
-        self.rov_statistics.memory_usage = msg.memory_usage
-        self.rov_statistics.cpu_package_cur_temp = msg.cpu_package_cur_temp
-        self.rov_statistics.cpu_package_max_temp = msg.cpu_package_max_temp
-        self.rov_statistics.cpu_package_min_temp = msg.cpu_package_min_temp
-        self.rov_statistics.cpu_core0_cur_temp = msg.cpu_core0_cur_temp
-        self.rov_statistics.cpu_core0_max_temp = msg.cpu_core0_max_temp
-        self.rov_statistics.cpu_core0_crit_temp = msg.cpu_core0_crit_temp
-        self.rov_statistics.cpu_core1_cur_temp = msg.cpu_core1_cur_temp
-        self.rov_statistics.cpu_core1_max_temp = msg.cpu_core1_max_temp
-        self.rov_statistics.cpu_core1_crit_temp = msg.cpu_core1_crit_temp
-        self.rov_statistics.cpu_core2_cur_temp = msg.cpu_core2_cur_temp
-        self.rov_statistics.cpu_core2_max_temp = msg.cpu_core2_max_temp
-        self.rov_statistics.cpu_core2_crit_temp = msg.cpu_core2_crit_temp
-        self.rov_statistics.cpu_core3_cur_temp = msg.cpu_core3_cur_temp
-        self.rov_statistics.cpu_core3_max_temp = msg.cpu_core3_max_temp
-        self.rov_statistics.cpu_core3_crit_temp = msg.cpu_core3_crit_temp
+        self.rov_statistics = msg
         self.rov_statistics_lock.release()
 
     def freeze_catcher(self):

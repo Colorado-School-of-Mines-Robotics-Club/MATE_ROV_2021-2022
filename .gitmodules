@@ -1,3 +1,0 @@
-[submodule "nanogui"]
-	path = src/basestation/bs_gui/ext/nanogui
-	url = https://github.com/wjakob/nanogui
