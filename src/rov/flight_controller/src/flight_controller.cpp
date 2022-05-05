@@ -70,7 +70,7 @@ public:
         this->registerThrusters();
         
         thruster_setpoint_subscription = this->create_subscription<rov_interfaces::msg::ThrusterSetpoints>("thruster_setpoints", 10, std::bind(&FlightController::setpoint_callback, this, std::placeholders::_1));
-        bno_data_subscription = this->create_subscription<rov_interfaces::msg::BNO055Data>("bno055_data", 10, std::bind(&FlightController::bno_callback, this, std::placeholders::_1));
+        bno_data_subscription = this->create_subscription<rov_interfaces::msg::BNO055Data>("bno055_data", rclcpp::SensorDataQoS(), std::bind(&FlightController::bno_callback, this, std::placeholders::_1));
         
         _publisher = this->create_publisher<rov_interfaces::msg::PWM>("PWM", 10);
 
