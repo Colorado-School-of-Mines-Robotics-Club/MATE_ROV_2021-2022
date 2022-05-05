@@ -129,7 +129,7 @@ class ROV_Control(Node):
             # A) it's pushed now and
             # B) it wasn't pushed before
             if getattr(joystick, button) and not getattr(self.last_joy, button):
-5                setattr(self.toggled_buttons, button, True)
+                setattr(self.toggled_buttons, button, True)
 
         # self.current_joy = msg
         self.last_joy_time = self.now_seconds()
