@@ -134,7 +134,7 @@ private:
                 // test filenames to see if camera is available
                 for(std::string camera_path : filenames) {
                     // TODO: TEST PIPELINE camSet='v4l2src device=/dev/video0 io-mode=2 ! avdec_mjpeg ! nvvidconv ! video/x-raw,width=320,height=240,format=BGR,framerate=30/1 ! appsink'
-                    std::string pipeline = std::string("v4l2src device="+camera_path+" io-mode=2 ! avdec_mjpeg ! nvvconv ! video/x-raw,format=BGR,height=240,width=320,framerate=30/1 ! appsink");
+                    std::string pipeline = std::string("v4l2src ! device="+camera_path+"io-mode=2, width=320, height=240, framerate=30/1 ! jpegparse ! nvjpegdec ! video/x-raw, format=(string)mjpeg ! nvvidconv ! video/x-raw, format=(string)BGR ! nvvidconv ! video/x-raw, format=(string)BGR ! appsink");
                     std::shared_ptr<cv::VideoCapture> camera_device = std::make_shared<cv::VideoCapture>(pipeline, cv::CAP_GSTREAMER);
                     usleep(1000 * 1000); // ensure camera is captured and opened
                     if(!camera_device->isOpened()) {
@@ -175,7 +175,7 @@ private:
 
         // test filenames to see if camera is available
         for(std::string camera_path : filenames) {
-            std::string pipeline = std::string("v4l2src device="+camera_path+" io-mode=2 ! avdec_mjpeg ! nvvidconv ! video/x-raw,format=BGR,height=240,width=320,framerate=30/1 ! appsink");
+            std::string pipeline = std::string("v4l2src ! device="+camera_path+"io-mode=2, width=320, height=240, framerate=30/1 ! jpegparse ! nvjpegdec ! video/x-raw, format=(string)mjpeg ! nvvidconv ! video/x-raw, format=(string)BGR ! nvvidconv ! video/x-raw, format=(string)BGR ! appsink");
             std::shared_ptr<cv::VideoCapture> camera = std::make_shared<cv::VideoCapture>(pipeline, cv::CAP_GSTREAMER);
             usleep(1000 * 1000); // ensure camera is captured and opened
             if(!camera->isOpened()) {
@@ -200,6 +200,7 @@ private:
 };
 
 int main(int argc, char ** argv) {
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     rclcpp::init(argc, argv);
     rclcpp::spin(std::make_shared<ROV_Cameras>());
     rclcpp::shutdown();
