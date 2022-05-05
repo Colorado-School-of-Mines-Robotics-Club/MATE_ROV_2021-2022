@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(pca9685_node)
+project(rov_launch)
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -20,23 +20,11 @@ find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
-find_package(rov_interfaces REQUIRED)
-find_package(rclcpp REQUIRED)
 
-add_executable(pca9685_node src/PCA9685_Node.cpp src/JHPWMPCA9685.cpp src/JHPWMPCA9685.h src/ServoDriver.cpp src/ServoDriver.hpp)
-target_include_directories(pca9685_node PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-
-target_link_libraries(pca9685_node i2c)
-
-ament_target_dependencies(pca9685_node
-  rclcpp
-  rov_interfaces
+install (DIRECTORY 
+  launch
+  DESTINATION share/${PROJECT_NAME}
 )
-
-install(TARGETS pca9685_node
-  DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -48,5 +36,4 @@ if(BUILD_TESTING)
   #set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
-
 ament_package()
