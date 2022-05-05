@@ -8,6 +8,8 @@ RUN apt-get update
 RUN apt-get install -y \
     libpugixml-dev libeigen3-dev
 
+RUN python3.6 -m pip install pytransitions
+
 COPY src .
 COPY launch .
 COPY setup/ros_entrypoint.sh .
