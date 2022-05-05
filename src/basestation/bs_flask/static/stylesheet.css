@@ -27,6 +27,47 @@
 	width: 100%;
 }
 
+.joy-axis-cell {
+	padding: 5%;
+}
+.joy-axis-bar-container {
+	width: 100%;
+	height: 32px;
+	background-color: white;
+}
+
+.joy-axis-bar {
+	width: 100%;
+	height: 100%;
+	background-color: #2eb398;
+}
+
+.joy-axis-label {
+	color: white;
+	font-family: "Noto Sans";
+	display: flex;
+	justify-content: center;
+}
+
+.joy-button-cell {
+	padding: 2.5%;
+}
+
+.joy-button-indicator {
+	width: 32px;
+	height: 32px;
+	background-color: white;
+	display: flex;
+	justify-content: center;
+}
+
+.joy-button-label {
+	color: black;
+	font-family: "Noto Sans";
+	display: flex;
+	justify-content: center;
+}
+
 #root {
 	height: 100vh;
 	width: 100vw;
