@@ -56,8 +56,13 @@
 // }, 1000 / test_metadata.framerate);
 
 
+function makeRotation(x, y, z, theta){
+	let normalized_vector = Quaternion([x, y, z]).normalize();
+	let c = Math.cos(.5 * theta);
+	let s = Math.sin(.5 * theta);
+	return new Quaternion(c, s * normalized_vector.x, s * normalized_vector.y, s * normalized_vector.z);
+}
 
-var orientation_viewport;
 
 $(function(){
 	$("#info-tabs-container").tabs();
@@ -89,11 +94,19 @@ $(function(){
 			}
 		})
 
+		var orientation_viewport = new OrientationViewport(document.getElementById("orientation-viewport"));
+
 		var button_active_color = "#2eb398";
 		var button_inactive_color = "white";
 		var joystick_event_source = new EventSource("/get_joystick");
 		joystick_event_source.onmessage = event => {
 			let data = JSON.parse(event.data);
+
+			// orientation_viewport.rot.x = -50 * data.axes[0];
+			// orientation_viewport.rot.y = 50 * data.axes[1];
+			// // orientation_viewport.a = 1 * data.axes[2];
+			// orientation_viewport.orientation_quaternion = makeRotation(-data.axes[0], data.axes[1], -1, .5 * Math.PI * data.axes[2]);
+
 			data.axes = data.axes.map(value => 50 * (value + 1));
 			data.axes.forEach((value, idx) => {
 				$(`#joy-axis-${idx}-bar`).css("width", `${value}%`);
@@ -104,13 +117,9 @@ $(function(){
 			});
 		};
 
-		orientation_viewport = new OrientationViewport(document.getElementById("orientation-viewport"));
 		var attitude_event_source = new EventSource("/get_attitude");
 		attitude_event_source.onmessage = event => {
-			let orientation = JSON.parse(event.data);
-			orientation_viewport.quaternion = orientation;
-			orientation_viewport.quaternion.i *= -1;
-			orientation_viewport.quaternion.j *= -1;
-			orientation_viewport.quaternion.k *= -1;
+			orientation_viewport.orientation_quaternion = new Quaternion(JSON.parse(event.data));
+			console.log(orientation_viewport.orientation_quaternion);
 		};
 });
