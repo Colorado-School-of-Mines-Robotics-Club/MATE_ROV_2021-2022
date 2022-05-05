@@ -8,9 +8,7 @@
 #include "eigen3/Eigen/Geometry"
 
 #include <rclcpp/rclcpp.hpp>
-#include <message_filters/subscriber.h>
-#include <message_filters/synchronizer.h>
-#include <message_filters/sync_policies/approximate_time.h>
+#include <sensor_msgs/msg/joy.hpp>
 
 #include "rov_interfaces/msg/bno055_data.hpp"
 #include "rov_interfaces/msg/thruster_setpoints.hpp"
@@ -51,51 +49,33 @@ public:
         thrusters[5] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
         thrusters[6] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
         thrusters[7] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
-        // this lambda is horrible and probably should be refactored, but.... it only runs once on construction time so does it even matter??
-        // alternatively, we could create config file that is updated when thruster config files are changed.
-        // cmake could create task to do what this lambda is doing, but at compile time!
-        auto concatThrusterGeometry = [](std::array<Thruster, NUM_THRUSTERS> thrusters)->Eigen::Matrix<double, 6, NUM_THRUSTERS> {
-            Eigen::MatrixXd geometry;
-            Eigen::MatrixXd temp_geometry;
-            Eigen::Vector3d i_hat(1,0,0);
-            Eigen::Vector3d j_hat(0,1,0);
-            Eigen::Vector3d k_hat(0,0,1);
-            for(int i = 0; i < NUM_THRUSTERS; i++) {
-                Thruster t = thrusters[i];
-                // calculate linear and rotation contribution
-                Eigen::Vector3d linear_contribution(t.maximum_thrust);
-                Eigen::Vector3d rotation_contribution(t.position.cross(t.maximum_thrust));
 
-                // concatenate them
-                Eigen::MatrixXd toConcat(linear_contribution.rows()+rotation_contribution.rows(), linear_contribution.cols());
-                toConcat << linear_contribution, 
-                             rotation_contribution;
-                temp_geometry = geometry;
-                Eigen::MatrixXd geometry(6, geometry.cols()+1);
-                geometry << temp_geometry, toConcat;
-            }
-            return geometry;
-        };
+        std::array<Eigen::VectorXd, NUM_THRUSTERS> temp;
+        for(int i = 0; i < NUM_THRUSTERS; i++) {
+            Thruster t = thrusters[i];
+            // calculate linear and rotation contribution
+            Eigen::Vector3d linear_contribution(t.thrust);
+            Eigen::Vector3d rotation_contribution(t.position.cross(t.thrust).normalized());
 
-        this->thruster_geometry = concatThrusterGeometry(this->thrusters);
+            // concatenate them
+            temp[i] = Eigen::VectorXd(6);
+            temp[i] << linear_contribution, rotation_contribution;
+            thruster_geometry.col(i) << temp[i];
+        }
+        
         // compute the full pivoting LU decomposition of the thruster geometry
         this->thruster_geometry_full_piv_lu = std::make_shared<Eigen::FullPivLU<Eigen::Matrix<double, 6, NUM_THRUSTERS>> const>(this->thruster_geometry.fullPivLu());
 
         // use PWM service to register thrusters on PCA9685
         this->registerThrusters();
         
-        thruster_setpoint_subscription.subscribe(this, "thruster_setpoints");
-        bno_data_subscription.subscribe(this, "bno055_data");
+        thruster_setpoint_subscription = this->create_subscription<rov_interfaces::msg::ThrusterSetpoints>("thruster_setpoints", 10, std::bind(&FlightController::setpoint_callback, this, std::placeholders::_1));
+        bno_data_subscription = this->create_subscription<rov_interfaces::msg::BNO055Data>("bno055_data", 10, std::bind(&FlightController::bno_callback, this, std::placeholders::_1));
         
         _publisher = this->create_publisher<rov_interfaces::msg::PWM>("PWM", 10);
 
-        // sync = http://wiki.ros.org/message_filters
-        typedef message_filters::sync_policies::ApproximateTime<rov_interfaces::msg::ThrusterSetpoints, rov_interfaces::msg::BNO055Data> approximate_policy;
-        message_filters::Synchronizer<approximate_policy> sync(approximate_policy(10), thruster_setpoint_subscription, bno_data_subscription);
-        sync.setMaxIntervalDuration(rclcpp::Duration(0.15,0));
-        sync.registerCallback(std::bind(&FlightController::update, this, std::placeholders::_1, std::placeholders::_2));
-
-        stall_detector = this->create_wall_timer(std::chrono::milliseconds(250), std::bind(&FlightController::StallDetector, this));
+        // about 60 hz update rate
+        pid_control_loop = this->create_wall_timer(std::chrono::milliseconds(16), std::bind(&FlightController::update, this));
     }
 private:
     void registerThrusters() {
@@ -128,30 +108,48 @@ private:
         }
     }
 
-    void update(const rov_interfaces::msg::ThrusterSetpoints::ConstSharedPtr& setpoints, const rov_interfaces::msg::BNO055Data::ConstSharedPtr& bno_data) {
-        Eigen::Vector3d desired_force;
-        Eigen::Vector3d desired_torque;
-        // fill the matrixes
-        
-        auto now = std::chrono::high_resolution_clock::now();
-        int dt_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - this->last_updated).count();
-        this->last_updated = now;
+    void setpoint_callback(const rov_interfaces::msg::ThrusterSetpoints::SharedPtr setpoints) {
+        std::lock_guard<std::mutex>(this->setpoint_mutex);
+        std::lock_guard<std::mutex>(this->stall_mutex);
         translation_setpoints(0,0) = setpoints->vx;
         translation_setpoints(1,0) = setpoints->vy;
         translation_setpoints(2,0) = setpoints->vz;
         attitude_setpoints(0,0) = setpoints->omegax;
         attitude_setpoints(1,0) = setpoints->omegay;
         attitude_setpoints(2,0) = setpoints->omegaz;
+    }
 
-        // update desired force
-        // Linear, discrete-time PID controller
-        Eigen::Vector3d linear_accel(bno_data->linearaccel.i, bno_data->linearaccel.j,bno_data->linearaccel.k); // m/s^2
+    void bno_callback(const rov_interfaces::msg::BNO055Data::SharedPtr bno_data) {
+        std::lock_guard<std::mutex>(this->bno_mutex);
+        this->bno_data = *bno_data.get();
+    }
+
+    void update() {
+        Eigen::Vector3d desired_force;
+        Eigen::Vector3d desired_torque;
+
+        // update dt
+        auto now = std::chrono::high_resolution_clock::now();
+        int dt_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - this->last_updated).count();
+        this->last_updated = now;
+
+        // fill the matrixes based on bno and setpoint data
+        this->setpoint_mutex.lock();
+        this->bno_mutex.lock();
+        Eigen::Vector3d linear_accel(bno_data.linearaccel.i, bno_data.linearaccel.j,bno_data.linearaccel.k); // m/s^2
         Eigen::Vector3d linear_velocity = linear_velocity + linear_accel * dt_ms / 1000; // get an approximation of linear velocity
-        Eigen::Vector3d linear_velocity_err;
+        linear_velocity_err_last = linear_velocity_err;
         linear_velocity_err[0] = translation_setpoints(0,0) - linear_velocity[0];
         linear_velocity_err[1] = translation_setpoints(1,0) - linear_velocity[1];
         linear_velocity_err[2] = translation_setpoints(2,0) - linear_velocity[2];
+        Eigen::Vector3d ha = dt_ms * 0.5 * attitude_setpoints; // vector of half angle
+        Eigen::Vector3d omega = Eigen::Vector3d(bno_data.gyroscope.i, bno_data.gyroscope.j, bno_data.gyroscope.k);
+        auto quaternion_measured = Eigen::Quaterniond(bno_data.orientation.w, bno_data.orientation.i, bno_data.orientation.j, bno_data.orientation.k);
+        this->setpoint_mutex.unlock();
+        this->bno_mutex.unlock();
 
+        // update desired force
+        // Linear, discrete-time PID controller
         // lambdas for linear PID loop
         auto P = [](double& kp, Eigen::Vector3d& linear_velocity_err)->Eigen::Vector3d{
             return kp * linear_velocity_err;
@@ -162,7 +160,7 @@ private:
         };
 
         // P + I + D
-        desired_torque = P(kp,linear_velocity_err) 
+        desired_force = P(kp,linear_velocity_err) 
                         + (linear_integral += I(ki, linear_velocity_err, dt_ms)) 
                         + D(kd, linear_velocity_err, linear_velocity_err_last, dt_ms);
 
@@ -173,10 +171,10 @@ private:
         // desired_force(2,0) = (translation_setpoints(2,0) - translation_setpoints_last(2,0));
         // desired_force = MASS / dt_ms * desired_force;
 
+
         // update desired torque
         // TODO: look at this if performance needs to be improved (loses accuracy tho)
         // see https://stackoverflow.com/questions/24197182/efficient-quaternion-angular-velocity/24201879#24201879
-        Eigen::Vector3d ha = dt_ms * 0.5 * attitude_setpoints; // vector of half angle
         double l = ha.norm(); // magnitude
         if (l > 0) {
             ha *= sin(l) / l;
@@ -187,7 +185,6 @@ private:
 
         // Non Linear P^2 Quaternion based control scheme
         // see: http://www.diva-portal.org/smash/get/diva2:1010947/FULLTEXT01.pdf
-        auto quaternion_measured = Eigen::Quaterniond(bno_data->orientation.w, bno_data->orientation.i, bno_data->orientation.j, bno_data->orientation.k);
         auto q_err = quaternion_reference * quaternion_measured.conjugate(); // hamilton product (hopefully)
         Eigen::Vector3d axis_err;
 
@@ -197,7 +194,6 @@ private:
             axis_err = q_err.vec();
         }
 
-        Eigen::Vector3d omega = Eigen::Vector3d(bno_data->gyroscope.i, bno_data->gyroscope.j, bno_data->gyroscope.k);
         desired_torque = (-Pq * axis_err) - (Pw * omega);
 
         // control allocation
@@ -209,8 +205,8 @@ private:
         forcesAndTorques(4,0) = desired_torque.y();
         forcesAndTorques(5,0) = desired_torque.z();
 
-        // solve Ax = b andnormalize thrust such that it satisfies MIN_THRUST_VALUE <= throttles[j] <= MAX_THRUST_VALUE 
-        // while scaling thrusters to account for large thrust demands on a single thruster        
+        // solve Ax = b and normalize thrust such that it satisfies MIN_THRUST_VALUE <= throttles[j] <= MAX_THRUST_VALUE 
+        // while scaling thrusters to account for large thrust demands on a single thruster
         Eigen::Matrix<double, NUM_THRUSTERS, 1> throttles = thrust2throttle(this->thruster_geometry_full_piv_lu->solve(forcesAndTorques));
 
         // publish PWM values
@@ -221,13 +217,6 @@ private:
             msg.channel = i;
             _publisher->publish(msg);
         }
-
-        // update last
-        linear_accel_last = linear_accel;
-        linear_velocity_err_last = linear_velocity_err;
-        translation_setpoints_last = this->translation_setpoints;
-        attitude_setpoints_last = this->attitude_setpoints;
-        quaternion_reference_last = this->quaternion_reference;
     }
 
     Eigen::Matrix<double,NUM_THRUSTERS,1> thrust2throttle(Eigen::Matrix<double, NUM_THRUSTERS, 1> thrust) {
@@ -259,32 +248,25 @@ private:
         return toret;
     }
 
-    void StallDetector() {
-        auto now = std::chrono::high_resolution_clock::now();
-        auto duration_since_last = this->last_updated - now;
-        int milliseconds_since_last = std::chrono::duration_cast<std::chrono::milliseconds>(duration_since_last).count();
-        if(milliseconds_since_last > 250) {
-            // WE HAVE LOST CONNECTION, STOP THRUSTING
-            // TODO:implement
-        }
-    }
-
-    message_filters::Subscriber<rov_interfaces::msg::ThrusterSetpoints> thruster_setpoint_subscription;
-    message_filters::Subscriber<rov_interfaces::msg::BNO055Data> bno_data_subscription;
+    rclcpp::Subscription<rov_interfaces::msg::ThrusterSetpoints>::SharedPtr thruster_setpoint_subscription;
+    rclcpp::Subscription<rov_interfaces::msg::BNO055Data>::SharedPtr bno_data_subscription;
     rclcpp::Publisher<rov_interfaces::msg::PWM>::SharedPtr _publisher;
 
-    rclcpp::TimerBase::SharedPtr stall_detector;
+    rclcpp::TimerBase::SharedPtr pid_control_loop;
 
     std::chrono::time_point<std::chrono::high_resolution_clock> last_updated;
 
+    std::mutex stall_mutex;
+
+    rov_interfaces::msg::BNO055Data bno_data;
+    std::mutex bno_mutex;
     Eigen::Vector3d translation_setpoints = Eigen::Vector3d(3,1);
     Eigen::Vector3d attitude_setpoints = Eigen::Vector3d(3,1);
+    std::mutex setpoint_mutex;
     Eigen::Quaterniond quaternion_reference;
-    Eigen::Vector3d translation_setpoints_last = Eigen::Vector3d(3,1);
-    Eigen::Vector3d attitude_setpoints_last = Eigen::Vector3d(3,1);
-    Eigen::Quaterniond quaternion_reference_last;
     Eigen::Vector3d linear_accel_last;
     Eigen::Vector3d linear_integral;
+    Eigen::Vector3d linear_velocity_err = Eigen::Vector3d(0,0,0);
     Eigen::Vector3d linear_velocity_err_last;
     std::array<Thruster, NUM_THRUSTERS> thrusters;
     Eigen::Matrix<double, 6, NUM_THRUSTERS> thruster_geometry;
