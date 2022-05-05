@@ -10,6 +10,7 @@ from flask import Flask, request, render_template, render_template_string, Respo
 from cv_bridge import CvBridge
 import cv2
 import os
+import json
 
 from rov_interfaces.msg import JetsonNanoStatistics, BNO055Data
 
@@ -62,7 +63,7 @@ class Flask_Node(Node):
         self.bno_data = BNO055Data()
 
         # self.are_we_frozen = self.create_timer(3, self.freeze_catcher)
-    
+
     def test(self, msg):
         print(msg.data)
 
@@ -77,12 +78,14 @@ class Flask_Node(Node):
     def joystick_callback(self, msg:Joy):
         # do something with joystick data
         self.joy_data = msg
-        pass
 
     def get_joystick(self):
         while True:
             sleep(1/120)
-            yield self.joy_data
+            yield "data:" + json.dumps({
+                "axes": list(self.joy_data.axes),
+                "buttons": list(self.joy_data.buttons)
+            }) + "\n\n"
 
     # ouch my eyes
     def rov_statistics_callback(self, msg:JetsonNanoStatistics):
@@ -197,6 +200,10 @@ def shellCommand():
 
     print("Sending command result to JS: {}".format(recieved_command_result))
     return {"result": recieved_command_result}
+
+@app.route("/get_joystick")
+def get_joystick():
+    return Response(ros2_node.get_joystick(), mimetype="text/event-stream")
 
 def main(args=None):
     global ros2_node

@@ -88,4 +88,19 @@ $(function(){
 				)
 			}
 		})
+
+		var button_active_color = "#2eb398";
+		var button_inactive_color = "white";
+		var joystick_event_source = new EventSource("/get_joystick");
+		joystick_event_source.onmessage = event => {
+			let data = JSON.parse(event.data);
+			data.axes = data.axes.map(value => 50 * (value + 1));
+			data.axes.forEach((value, idx) => {
+				$(`#joy-axis-${idx}-bar`).css("width", `${value}%`);
+				$(`#joy-axis-${idx}-label`).text(`${~~value}%`);
+			});
+			data.buttons.forEach((is_active, idx) => {
+				$(`#joy-button-${idx + 1}-indicator`).css("background-color", (is_active) ? button_active_color : button_inactive_color);
+			});
+		}
 });
