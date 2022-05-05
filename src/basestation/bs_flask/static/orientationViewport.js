@@ -12,7 +12,9 @@ class OrientationViewport{
 			k: 0
 		};
 
-		this.a = 0;
+		this.x = 0;
+		this.y = 0;
+		this.z = 0;
 
 		this.sketch = new p5(function(p5){
 			let frameCount = 0;
@@ -30,14 +32,20 @@ class OrientationViewport{
 
 			p5.draw = function(){
 				p5.background(0);
-				// p5.rotateX(-.4);
-				// p5.rotateY(.5);
 				p5.applyMatrix(
 					1, 0, 0, 0,
-					0, -1, 0, 0,
-					0, 0, 1, 0,
+					0, 1, 0, 0,
+					0, 0, -1, 0,
 					0, 0, 0, 1
 				)
+				p5.applyMatrix(
+					 .9914, -.0624, -.1154, 0,
+					 .1050, -.1492,  .9833, 0,
+					-.0786, -.9833, -.1414, 0,
+					0, 0, 0, 1
+				)
+				p5.rotateZ(-.3);
+				p5.rotateY(.1);
 				p5.noFill();
 
 
@@ -69,6 +77,19 @@ class OrientationViewport{
 					2 * ((parent.quaternion.i * parent.quaternion.k) - (parent.quaternion.w * parent.quaternion.j)), 2 * ((parent.quaternion.j * parent.quaternion.k) + (parent.quaternion.w * parent.quaternion.i)), 1 - (2 * ((parent.quaternion.i ** 2) + (parent.quaternion.j ** 2))), 0,
 					0, 0, 0, 1
 				);
+
+				p5.rotateX(-p5.PI/2);
+				p5.rotateY(-p5.PI/2);
+
+				// p5.applyMatrix(
+				// 	1, 0, 0, 0,
+				// 	0, 1, 0, 0,
+				// 	0, 0, -1, 0,
+				// 	0, 0, 0, 1
+				// );
+
+				// p5.rotateX(p5.PI / 2);
+				// p5.rotateZ(-p5.PI / 2);
 
 				p5.stroke(255);
 				p5.box(side_length, side_length, side_length);

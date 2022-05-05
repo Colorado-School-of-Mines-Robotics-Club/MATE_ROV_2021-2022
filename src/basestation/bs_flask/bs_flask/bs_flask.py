@@ -3,6 +3,7 @@ from ament_index_python import get_package_share_directory
 import rclpy
 import signal
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 from std_msgs.msg import Bool, String
 from sensor_msgs.msg import CompressedImage, Joy
 import threading
@@ -58,7 +59,7 @@ class Flask_Node(Node):
         self.joystick_subscriber = self.create_subscription(Joy, "joy", self.joystick_callback, 10)
         self.joy_data = Joy()
 
-        self.bno_subscriber = self.create_subscription(BNO055Data, "bno055_data", self.bno_callback, 10)
+        self.bno_subscriber = self.create_subscription(BNO055Data, "bno055_data", self.bno_callback, qos_profile_sensor_data)
         self.bno_data = BNO055Data()
 
         # self.are_we_frozen = self.create_timer(3, self.freeze_catcher)
@@ -71,7 +72,7 @@ class Flask_Node(Node):
 
     def get_attitude(self):
         while True:
-            sleep(1)#/120)
+            sleep(1/120)
             yield "data:" + json.dumps({
                 "w": self.bno_data.orientation.w,
                 "i": self.bno_data.orientation.i,

@@ -57,7 +57,7 @@
 
 
 
-
+var orientation_viewport;
 
 $(function(){
 	$("#info-tabs-container").tabs();
@@ -104,11 +104,13 @@ $(function(){
 			});
 		};
 
-		var orientation_viewport = new OrientationViewport(document.getElementById("orientation-viewport"));
+		orientation_viewport = new OrientationViewport(document.getElementById("orientation-viewport"));
 		var attitude_event_source = new EventSource("/get_attitude");
 		attitude_event_source.onmessage = event => {
 			let orientation = JSON.parse(event.data);
 			orientation_viewport.quaternion = orientation;
-			console.log(orientation);
+			orientation_viewport.quaternion.i *= -1;
+			orientation_viewport.quaternion.j *= -1;
+			orientation_viewport.quaternion.k *= -1;
 		};
 });
