@@ -299,7 +299,7 @@ public:
     int m_fdBNO;
     int m_i2cChannel;
 private:
-    const Eigen::Quaterniond rotation = Eigen::Quaternion(0,sqrt(2)/2,0,sqrt(2)/2);
+    const Eigen::Quaterniond rotation = Eigen::Quaternion(-0.5,-0.5,-0.5,-0.5);
 
     uint8_t read8(uint8_t reg);
     bool readLen(uint8_t reg, uint8_t* buf, uint8_t len);
