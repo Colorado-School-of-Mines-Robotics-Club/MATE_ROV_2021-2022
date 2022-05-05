@@ -11,7 +11,7 @@ from cv_bridge import CvBridge
 import cv2
 import os
 
-from rov_interfaces.msg import JetsonNanoStatistics
+from rov_interfaces.msg import JetsonNanoStatistics, BNO055Data
 
 FPS = float(30.0)
 PREFIX = get_package_share_directory("bs_flask")
@@ -58,10 +58,21 @@ class Flask_Node(Node):
 
         self.joy_data = Joy()
 
+        self.bno_subscriber = self.create_subscription(BNO055Data, "bno_data", self.bno_callback, 10)
+        self.bno_data = BNO055Data()
+
         # self.are_we_frozen = self.create_timer(3, self.freeze_catcher)
     
     def test(self, msg):
         print(msg.data)
+
+    def bno_callback(self, msg:BNO055Data):
+        self.bno_data = msg
+    
+    def get_attitude(self):
+        while True:
+            sleep(1/120)
+            yield self.bno_data.orientation
 
     def joystick_callback(self, msg:Joy):
         # do something with joystick data
