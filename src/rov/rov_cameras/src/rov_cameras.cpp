@@ -21,7 +21,19 @@
 
 using namespace std::chrono_literals;
 
-const std::string pipeline = std::string("v4l2src ! device="+camera_path+"io-mode=2, width=320, height=240, framerate=30/1 ! jpegparse ! nvjpegdec ! video/x-raw, format=(string)mjpeg ! nvvidconv ! video/x-raw, format=(string)BGR ! nvvidconv ! video/x-raw, format=(string)BGR ! appsink");
+const std::string pipeline = std::string("v4l2src ! device=%s io-mode=2, width=320, height=240, framerate=30/1 ! jpegparse ! nvjpegdec ! video/x-raw, format=(string)mjpeg ! nvvidconv ! video/x-raw, format=(string)BGR ! nvvidconv ! video/x-raw, format=(string)BGR ! appsink");
+
+template<typename ... Args>
+std::string string_format( const std::string& format, Args ... args )
+{
+    int size_s = std::snprintf( nullptr, 0, format.c_str(), args ... ) + 1; // Extra space for '\0'
+    if( size_s <= 0 ){ throw std::runtime_error( "Error during formatting." ); }
+    auto size = static_cast<size_t>( size_s );
+    std::unique_ptr<char[]> buf( new char[ size ] );
+    std::snprintf( buf.get(), size, format.c_str(), args ... );
+    return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
+}
+
 
 class ROV_Cameras : public rclcpp::Node {
 public:
@@ -136,7 +148,7 @@ private:
                 // test filenames to see if camera is available
                 for(std::string camera_path : filenames) {
                     // TODO: TEST PIPELINE camSet='v4l2src device=/dev/video0 io-mode=2 ! avdec_mjpeg ! nvvidconv ! video/x-raw,width=320,height=240,format=BGR,framerate=30/1 ! appsink'
-                    std::shared_ptr<cv::VideoCapture> camera_device = std::make_shared<cv::VideoCapture>(pipeline, cv::CAP_GSTREAMER);
+                    std::shared_ptr<cv::VideoCapture> camera_device = std::make_shared<cv::VideoCapture>(string_format(pipeline, camera_path), cv::CAP_GSTREAMER);
                     usleep(1000 * 1000); // ensure camera is captured and opened
                     if(!camera_device->isOpened()) {
                         RCLCPP_DEBUG(this->get_logger(), "During reconnection attempt of Camera %i, %s is not a camera or could not be opened (might already be in use).", camera, camera_path);
@@ -176,7 +188,7 @@ private:
 
         // test filenames to see if camera is available
         for(std::string camera_path : filenames) {
-            std::shared_ptr<cv::VideoCapture> camera = std::make_shared<cv::VideoCapture>(pipeline, cv::CAP_GSTREAMER);
+            std::shared_ptr<cv::VideoCapture> camera = std::make_shared<cv::VideoCapture>(string_format(pipeline, camera_path), cv::CAP_GSTREAMER);
             usleep(1000 * 1000); // ensure camera is captured and opened
             if(!camera->isOpened()) {
                 RCLCPP_DEBUG(this->get_logger(), "%s is not a camera or could not be opened.", camera_path);
