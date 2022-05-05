@@ -21,6 +21,8 @@
 
 using namespace std::chrono_literals;
 
+const std::string pipeline = std::string("v4l2src ! device="+camera_path+"io-mode=2, width=320, height=240, framerate=30/1 ! jpegparse ! nvjpegdec ! video/x-raw, format=(string)mjpeg ! nvvidconv ! video/x-raw, format=(string)BGR ! nvvidconv ! video/x-raw, format=(string)BGR ! appsink");
+
 class ROV_Cameras : public rclcpp::Node {
 public:
     ROV_Cameras() : Node(std::string("rov_cameras")) {
@@ -34,13 +36,13 @@ public:
 
         // create camera control subscribers
         std::function<void(const std_msgs::msg::Bool::SharedPtr)> callback0 = std::bind(&ROV_Cameras::camera_control, this, 0, std::placeholders::_1);
-        this->create_subscription<std_msgs::msg::Bool>("cam0_control", 10, callback0);
+        camera_control0 = this->create_subscription<std_msgs::msg::Bool>("cam0_control", 10, callback0);
         std::function<void(const std_msgs::msg::Bool::SharedPtr)> callback1 = std::bind(&ROV_Cameras::camera_control, this, 1, std::placeholders::_1);
-        this->create_subscription<std_msgs::msg::Bool>("cam1_control", 10, callback1);
+        camera_control1 = this->create_subscription<std_msgs::msg::Bool>("cam1_control", 10, callback1);
         std::function<void(const std_msgs::msg::Bool::SharedPtr)> callback2 = std::bind(&ROV_Cameras::camera_control, this, 2, std::placeholders::_1);
-        this->create_subscription<std_msgs::msg::Bool>("cam2_control", 10, callback2);
+        camera_control2 = this->create_subscription<std_msgs::msg::Bool>("cam2_control", 10, callback2);
         std::function<void(const std_msgs::msg::Bool::SharedPtr)> callback3 = std::bind(&ROV_Cameras::camera_control, this, 3, std::placeholders::_1);
-        this->create_subscription<std_msgs::msg::Bool>("cam3_control", 10, callback3);
+        camera_control3 = this->create_subscription<std_msgs::msg::Bool>("cam3_control", 10, callback3);
 
         // Create worker threads
         this->workers.push_back(std::thread(std::bind(&ROV_Cameras::camera_callback, this, 0, std::reference_wrapper<bool>(this->running))));
@@ -134,7 +136,6 @@ private:
                 // test filenames to see if camera is available
                 for(std::string camera_path : filenames) {
                     // TODO: TEST PIPELINE camSet='v4l2src device=/dev/video0 io-mode=2 ! avdec_mjpeg ! nvvidconv ! video/x-raw,width=320,height=240,format=BGR,framerate=30/1 ! appsink'
-                    std::string pipeline = std::string("v4l2src ! device="+camera_path+"io-mode=2, width=320, height=240, framerate=30/1 ! jpegparse ! nvjpegdec ! video/x-raw, format=(string)mjpeg ! nvvidconv ! video/x-raw, format=(string)BGR ! nvvidconv ! video/x-raw, format=(string)BGR ! appsink");
                     std::shared_ptr<cv::VideoCapture> camera_device = std::make_shared<cv::VideoCapture>(pipeline, cv::CAP_GSTREAMER);
                     usleep(1000 * 1000); // ensure camera is captured and opened
                     if(!camera_device->isOpened()) {
@@ -175,7 +176,6 @@ private:
 
         // test filenames to see if camera is available
         for(std::string camera_path : filenames) {
-            std::string pipeline = std::string("v4l2src ! device="+camera_path+"io-mode=2, width=320, height=240, framerate=30/1 ! jpegparse ! nvjpegdec ! video/x-raw, format=(string)mjpeg ! nvvidconv ! video/x-raw, format=(string)BGR ! nvvidconv ! video/x-raw, format=(string)BGR ! appsink");
             std::shared_ptr<cv::VideoCapture> camera = std::make_shared<cv::VideoCapture>(pipeline, cv::CAP_GSTREAMER);
             usleep(1000 * 1000); // ensure camera is captured and opened
             if(!camera->isOpened()) {
@@ -197,6 +197,11 @@ private:
     std::array<std::mutex, 4> should_camera_run_mutex;
     std::unordered_map<int, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::CompressedImage>>> image_publishers;
     bool running = true;
+
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr camera_control0;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr camera_control1;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr camera_control2;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr camera_control3;
 };
 
 int main(int argc, char ** argv) {
