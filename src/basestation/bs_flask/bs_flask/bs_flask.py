@@ -56,10 +56,9 @@ class Flask_Node(Node):
         self.rov_statistics_lock = threading.Lock()
 
         self.joystick_subscriber = self.create_subscription(Joy, "joy", self.joystick_callback, 10)
-
         self.joy_data = Joy()
 
-        self.bno_subscriber = self.create_subscription(BNO055Data, "bno_data", self.bno_callback, 10)
+        self.bno_subscriber = self.create_subscription(BNO055Data, "bno055_data", self.bno_callback, 10)
         self.bno_data = BNO055Data()
 
         # self.are_we_frozen = self.create_timer(3, self.freeze_catcher)
@@ -69,11 +68,16 @@ class Flask_Node(Node):
 
     def bno_callback(self, msg:BNO055Data):
         self.bno_data = msg
-    
+
     def get_attitude(self):
         while True:
-            sleep(1/120)
-            yield self.bno_data.orientation
+            sleep(1)#/120)
+            yield "data:" + json.dumps({
+                "w": self.bno_data.orientation.w,
+                "i": self.bno_data.orientation.i,
+                "j": self.bno_data.orientation.j,
+                "k": self.bno_data.orientation.k,
+            }) + "\n\n"
 
     def joystick_callback(self, msg:Joy):
         # do something with joystick data
@@ -204,6 +208,10 @@ def shellCommand():
 @app.route("/get_joystick")
 def get_joystick():
     return Response(ros2_node.get_joystick(), mimetype="text/event-stream")
+
+@app.route("/get_attitude")
+def get_attitude():
+    return Response(ros2_node.get_attitude(), mimetype="text/event-stream")
 
 def main(args=None):
     global ros2_node

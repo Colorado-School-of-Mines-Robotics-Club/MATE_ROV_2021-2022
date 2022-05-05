@@ -102,5 +102,13 @@ $(function(){
 			data.buttons.forEach((is_active, idx) => {
 				$(`#joy-button-${idx + 1}-indicator`).css("background-color", (is_active) ? button_active_color : button_inactive_color);
 			});
-		}
+		};
+
+		var orientation_viewport = new OrientationViewport(document.getElementById("orientation-viewport"));
+		var attitude_event_source = new EventSource("/get_attitude");
+		attitude_event_source.onmessage = event => {
+			let orientation = JSON.parse(event.data);
+			orientation_viewport.quaternion = orientation;
+			console.log(orientation);
+		};
 });
