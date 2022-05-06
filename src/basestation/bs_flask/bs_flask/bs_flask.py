@@ -62,6 +62,7 @@ class Flask_Node(Node):
         self.bno_subscriber = self.create_subscription(BNO055Data, "bno055_data", self.bno_callback, qos_profile_sensor_data)
         self.bno_data = BNO055Data()
 
+        self.estop_publisher = self.create_publisher(Bool, "estop", 10)
         # self.are_we_frozen = self.create_timer(3, self.freeze_catcher)
 
     def test(self, msg):
@@ -156,6 +157,11 @@ class Flask_Node(Node):
             self.html_locks[index].release()
             yield (b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + htmltag + b'\r\n\r\n')
+    
+    def estop(self):
+        msg = Bool()
+        msg.data = True
+        self.estop_publisher.publish(msg)
 
 def ros2_thread(node):
     rclpy.spin(node)
