@@ -41,21 +41,22 @@ public:
                                 IYX,IYY,IYZ,
                                 IZX,IZY,IZZ;
         // define thrusters TODO: replace with a config file? (temp values atm)
-        thrusters[0] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
-        thrusters[1] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
-        thrusters[2] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
-        thrusters[3] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
-        thrusters[4] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
-        thrusters[5] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
-        thrusters[6] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
-        thrusters[7] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
+        float x = sqrt(2);
+        thrusters[0] = Thruster(Eigen::Vector3d(0.5,    0.5,    -0.5),  Eigen::Vector3d(0, 0,-1));
+        thrusters[1] = Thruster(Eigen::Vector3d(-0.5,   0.5,    -0.5),  Eigen::Vector3d(0, 0,-1));
+        thrusters[2] = Thruster(Eigen::Vector3d(0.5,    -0.5,   -0.5),  Eigen::Vector3d(0, 0,-1));
+        thrusters[3] = Thruster(Eigen::Vector3d(-0.5,   -0.5,   -0.5),  Eigen::Vector3d(0, 0,-1));
+        thrusters[4] = Thruster(Eigen::Vector3d(0.5,    0.5,    0),     Eigen::Vector3d(-x,  x, 0));
+        thrusters[5] = Thruster(Eigen::Vector3d(-0.5,   0.5,    0),     Eigen::Vector3d(x,   x, 0));
+        thrusters[6] = Thruster(Eigen::Vector3d(0.5,    -0.5,   0),     Eigen::Vector3d(-x, -x, 0));
+        thrusters[7] = Thruster(Eigen::Vector3d(-0.5,   -0.5,   0),     Eigen::Vector3d(x,  -x, 0));
 
         std::array<Eigen::VectorXd, NUM_THRUSTERS> temp;
         for(int i = 0; i < NUM_THRUSTERS; i++) {
             Thruster t = thrusters[i];
             // calculate linear and rotation contribution
-            Eigen::Vector3d linear_contribution(t.thrust);
-            Eigen::Vector3d rotation_contribution(t.position.cross(t.thrust).normalized());
+            Eigen::Vector3d linear_contribution(t.thrust * MAX_THRUST_VALUE);
+            Eigen::Vector3d rotation_contribution(t.position.cross(t.thrust * MAX_THRUST_VALUE));
 
             // concatenate them
             temp[i] = Eigen::VectorXd(6);
@@ -210,7 +211,14 @@ private:
         Eigen::Matrix<double, NUM_THRUSTERS, 1> throttles = thrust2throttle(this->thruster_geometry_full_piv_lu->solve(forcesAndTorques));
 
         // publish PWM values
-        for(int i = 0; i < NUM_THRUSTERS; i++) {
+        for(int i = 0; i < 3; i++) {
+            rov_interfaces::msg::PWM msg;
+            msg.angle_or_throttle = static_cast<float>(throttles(i,0)); // this is a source of noise in output signals, may cause system instability??
+            msg.is_continuous_servo = true;
+            msg.channel = i;
+            _publisher->publish(msg);
+        }
+        for(int i = 12; i < 16; i++) {
             rov_interfaces::msg::PWM msg;
             msg.angle_or_throttle = static_cast<float>(throttles(i,0)); // this is a source of noise in output signals, may cause system instability??
             msg.is_continuous_servo = true;
@@ -234,12 +242,12 @@ private:
         // inverse thrust function
         Eigen::Matrix<double,NUM_THRUSTERS,1> toret;
         for(int i = 0; i < NUM_THRUSTERS; i++) {
-            if(toret(i,0) < MIN_THROTTLE_CUTOFF) {
+            if(thrust(i,0) < MIN_THROTTLE_CUTOFF) {
                 // see documentation to understand origin of this equation
-                toret(i,0) = -0.0991 + 0.0505 * thrust(i,0) + 1.22e-3 * pow(thrust(i,0),2) + 1.91e-5 * pow(thrust(i,0),3);
+                toret(i,0) = max(-0.0991 + 0.0505 * thrust(i,0) + 1.22e-3 * pow(thrust(i,0),2) + 1.91e-5 * pow(thrust(i,0),3),-1);
             } else if (toret(i,0) > MAX_THROTTLE_CUTOFF) {
                 // see documentation to understand origin of this equation
-                toret(i,0) = 0.0986 + 0.0408 * thrust(i,0) + -8.14e-4 * pow(thrust(i,0),2) + 1.01e-5 * pow(thrust(i,0),3);
+                toret(i,0) = min(0.0986 + 0.0408 * thrust(i,0) + -8.14e-4 * pow(thrust(i,0),2) + 1.01e-5 * pow(thrust(i,0),3),1);
             } else {
                 toret(i,0) = 0;
             }

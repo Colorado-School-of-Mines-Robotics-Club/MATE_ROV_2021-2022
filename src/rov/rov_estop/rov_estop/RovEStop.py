@@ -16,7 +16,9 @@ class RovEStop(Node):
         # setup GPIO names in Board mode
         GPIO.setmode(GPIO.BOARD)
         self.CHANNEL = 12
+        self.CHANNEL2 = 16
         GPIO.setup(self.CHANNEL, GPIO.IN)
+        GPIO.setup(self.CHANNEL2, GPIO.IN)
         
         self.create_timer(0.01, self.main)
     
@@ -42,7 +44,8 @@ class RovEStop(Node):
     def main(self):
         try:
             pinVoltage = GPIO.input(self.CHANNEL)
-            if (pinVoltage == GPIO.HIGH):
+            pinVoltage2 = GPIO.input(self.CHANNEL2)
+            if (pinVoltage == GPIO.HIGH or pinVoltage2 == GPIO.HIGH):
                 # notify subscribers that there is a leak
                 msg = Bool()
                 msg.data = True
