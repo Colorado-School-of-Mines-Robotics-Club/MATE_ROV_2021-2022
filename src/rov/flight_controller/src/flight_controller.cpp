@@ -41,21 +41,21 @@ public:
                                 IYX,IYY,IYZ,
                                 IZX,IZY,IZZ;
         // define thrusters TODO: replace with a config file? (temp values atm)
-        thrusters[0] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
-        thrusters[1] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
-        thrusters[2] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
-        thrusters[3] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
-        thrusters[4] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
-        thrusters[5] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
-        thrusters[6] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
-        thrusters[7] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,0,0));
+        thrusters[0] = Thruster(Eigen::Vector3d(1,0,0), Eigen::Vector3d(1,0,0));
+        thrusters[1] = Thruster(Eigen::Vector3d(0,1,0), Eigen::Vector3d(1,0,0));
+        thrusters[2] = Thruster(Eigen::Vector3d(0,0,1), Eigen::Vector3d(0,1,0));
+        thrusters[3] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,1,0));
+        thrusters[4] = Thruster(Eigen::Vector3d(-1,0,0), Eigen::Vector3d(0,0,1));
+        thrusters[5] = Thruster(Eigen::Vector3d(0,-1,0), Eigen::Vector3d(0,0,1));
+        thrusters[6] = Thruster(Eigen::Vector3d(0,0,-1), Eigen::Vector3d(-1,0,0));
+        thrusters[7] = Thruster(Eigen::Vector3d(0,1,1), Eigen::Vector3d(0,0,-1));
 
         std::array<Eigen::VectorXd, NUM_THRUSTERS> temp;
         for(int i = 0; i < NUM_THRUSTERS; i++) {
             Thruster t = thrusters[i];
             // calculate linear and rotation contribution
-            Eigen::Vector3d linear_contribution(t.thrust);
-            Eigen::Vector3d rotation_contribution(t.position.cross(t.thrust).normalized());
+            Eigen::Vector3d linear_contribution(t.thrust * MAX_THRUST_VALUE);
+            Eigen::Vector3d rotation_contribution(t.position.cross(t.thrust * MAX_THRUST_VALUE));
 
             // concatenate them
             temp[i] = Eigen::VectorXd(6);
@@ -241,7 +241,7 @@ private:
         // inverse thrust function
         Eigen::Matrix<double,NUM_THRUSTERS,1> toret;
         for(int i = 0; i < NUM_THRUSTERS; i++) {
-            if(toret(i,0) < MIN_THROTTLE_CUTOFF) {
+            if(thrust(i,0) < MIN_THROTTLE_CUTOFF) {
                 // see documentation to understand origin of this equation
                 toret(i,0) = max(-0.0991 + 0.0505 * thrust(i,0) + 1.22e-3 * pow(thrust(i,0),2) + 1.91e-5 * pow(thrust(i,0),3),-1);
             } else if (toret(i,0) > MAX_THROTTLE_CUTOFF) {

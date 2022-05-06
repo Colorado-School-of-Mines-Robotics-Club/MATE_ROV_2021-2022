@@ -74,10 +74,22 @@ class Flask_Node(Node):
         while True:
             sleep(1/120)
             yield "data:" + json.dumps({
-                "w": self.bno_data.orientation.w,
-                "i": self.bno_data.orientation.i,
-                "j": self.bno_data.orientation.j,
-                "k": self.bno_data.orientation.k,
+                "orientation": {
+                    "w": self.bno_data.orientation.w,
+                    "x": self.bno_data.orientation.i,
+                    "y": self.bno_data.orientation.j,
+                    "z": self.bno_data.orientation.k
+                },
+                "gravity": {
+                    "x": self.bno_data.gravity.i,
+                    "y": self.bno_data.gravity.j,
+                    "z": self.bno_data.gravity.k
+                },
+                "magnetometer": {
+                    "x": self.bno_data.magnetometer.i,
+                    "y": self.bno_data.magnetometer.j,
+                    "z": self.bno_data.magnetometer.k
+                }
             }) + "\n\n"
 
     def joystick_callback(self, msg:Joy):
