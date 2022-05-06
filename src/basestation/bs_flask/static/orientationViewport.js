@@ -68,7 +68,7 @@ class OrientationViewport{
 				// let rotated = rot.rotateVector(Object.values(parent.orientation_data.current_magnetometer));
 				// let angle = Math.atan2(rotated[1], rotated[0]);
 
-				p5.background(0);
+				p5.background(55, 59, 62);
 
 				p5.withState("orientation_viewport", () => {
 					p5.translate(100, 0, 0);
@@ -135,7 +135,7 @@ class OrientationViewport{
 					p5.translate(-200, 0, 100);
 					p5.rectMode(p5.CENTER);
 					p5.noStroke();
-					p5.fill(38);
+					p5.fill(190, 200, 209);
 					p5.rect(0, 0, 200, p5.height);
 					p5.withState("artificial_horizon", () => {
 						p5.translate(0, -50, 0);
@@ -143,26 +143,26 @@ class OrientationViewport{
 						p5.withState("roll_plane", () => {
 							p5.noStroke();
 							p5.rotate(-p5.atan2(parent.orientation_data.current_down.x, parent.orientation_data.current_down.z));
-							p5.fill(40, 140, 200);
+							p5.fill(134, 206, 203);
 							p5.arc(0, 0, 100, 100, 0, p5.PI, p5.OPEN);
-							p5.fill(200, 140, 40);
+							p5.fill(225, 40, 133);
 							p5.arc(0, 0, 100, 100, p5.PI, p5.TWO_PI, p5.OPEN);
 							p5.withState("pitch_plane", () => {
 								let pitch = p5.atan2(parent.orientation_data.current_down.z, parent.orientation_data.current_down.y);
 								let mid_color;
 								p5.rotateX(pitch);
 								if(Math.abs(pitch) <= p5.HALF_PI){
-									mid_color = p5.color(40, 140, 200);
+									mid_color = p5.color(134, 206, 203);
 								}else{
-									mid_color = p5.color(200, 140, 40);
+									mid_color = p5.color(225, 40, 133);
 								}
 								p5.stroke(mid_color);
 								p5.line(-50, 0, 50, 0);
-								p5.stroke(191);
+								p5.stroke(19, 122, 127);
 								p5.fill(mid_color);
 								p5.ellipse(0, 0, 100, 100);
 
-								p5.stroke(63);
+								p5.stroke(55, 59, 62);
 								p5.noFill();
 								p5.strokeWeight(2);
 								for(let angle = -90; angle <= 90; angle += 15){
@@ -178,7 +178,7 @@ class OrientationViewport{
 									});
 								}
 							});
-							p5.stroke(191);
+							p5.stroke(19, 122, 127);
 							p5.noFill();
 							p5.withState("border", () => {
 								p5.translate(0, 0, 50);
@@ -186,7 +186,7 @@ class OrientationViewport{
 							});
 						});
 
-						p5.stroke(200, 100, 0);
+						p5.stroke(55, 59, 62);
 						p5.strokeWeight(2);
 						p5.line(-30, 0, 50, -10, 0, 50);
 						p5.line(10, 0, 50, 30, 0, 50);

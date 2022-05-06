@@ -2,7 +2,7 @@
 }
 
 .camera-viewport-img {
-	border: 1px solid #2eb398;
+	border: 1px solid #137a7f;
 	height: 360px;
 	width: 480px;
 	margin: 5%;
@@ -34,17 +34,18 @@
 .joy-axis-bar-container {
 	width: 100%;
 	height: 32px;
-	background-color: white;
+	background-color: #e12885;
 }
 
 .joy-axis-bar {
 	width: 100%;
 	height: 100%;
-	background-color: #2eb398;
+	background-color: #86cecb;
+	border: 1px solid #373b3e;
 }
 
 .joy-axis-label {
-	color: white;
+	color: #373b3e;
 	font-family: "Noto Sans";
 	display: flex;
 	justify-content: center;
@@ -57,13 +58,14 @@
 .joy-button-indicator {
 	width: 32px;
 	height: 32px;
-	background-color: white;
+	background-color: #137a7f;
 	display: flex;
 	justify-content: center;
+	border: 1px solid #373b3e;
 }
 
 .joy-button-label {
-	color: black;
+	color: #373b3e;
 	font-family: "Noto Sans";
 	display: flex;
 	justify-content: center;
@@ -85,9 +87,9 @@
 }
 
 body {
-	background: #262626;
+	background: #bec8d1;
 	border: 0px;
-	color: white;
+	color: #373b3e;
 	font-family: "Noto Sans";
 	margin: 0px;
 	padding: 0px;
