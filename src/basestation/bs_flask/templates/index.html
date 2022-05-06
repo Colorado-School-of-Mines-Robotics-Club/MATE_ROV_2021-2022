@@ -15,16 +15,9 @@
 	</head>
 	<body>
 		<table id="root" class="viewport-container">
-			<colgroup>
-				<col span="1" style="width:60%">
-			</colgroup>
-			<tr style="height:75%">
-				<td id="camera-viewport-section">{% include "viewports/camera_viewport_section.html" %}</td>
-				<td id="info-viewport">{% include "viewports/info_viewport.html" %}</td>
-			</tr>
 			<tr>
-				<td id="statistics-viewport">{% include "viewports/statistics_viewport.html" %}</td>
-				<td id="shell-viewport">{% include "viewports/shell_viewport.html" %}</td>
+				<td id="camera-viewport-section">{% include "viewports/camera_viewport_section.html" %}</td>
+				<td id="info-viewport" style="height: 100%; width: 40%;">{% include "viewports/info_viewport.html" %}</td>
 			</tr>
 		</table>
 	</body>

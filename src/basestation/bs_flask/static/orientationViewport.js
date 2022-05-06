@@ -5,24 +5,34 @@ class OrientationViewport{
 
 		this.side_length = 100;
 
-		this.orientation_quaternion = new Quaternion();
+		this.orientation_data = {
+			base_quaternion_inverse: null,
+			initial_heading: 0,
+			current_quaternion: null,
+			current_delta: new Quaternion(),
+			current_gravity: {
+				x: 0,
+				y: 0,
+				z: 1
+			},
+			current_magnetometer: {
+				x: 1,
+				y: 0,
+				z: 0
+			},
+			current_down: {
+				x: 0,
+				y: 0,
+				z: -1
+			}
+		};
 
-		this.gravity = {
-			x: 0,
-			y: 0,
-			z: -9.81
-		}
-		this.rot = {
-			x: 0,
-			y: 0,
-			z: -50
-		}
-		this.a = 0;
+		this.model = null;
 
 		this.sketch = new p5(function(p5){
 			let frameCount = 0;
 
-			p5.withState = function(block){
+			p5.withState = function(state_name, block){
 				p5.push();
 				block();
 				p5.pop();
@@ -41,6 +51,12 @@ class OrientationViewport{
 				p5.resizeCanvas(jQuery_containing_element.innerWidth(), jQuery_containing_element.innerHeight());
 			}
 
+			p5.preload = function(){
+				p5.loadModel("static/rov.stl", true, model => {
+					parent.model = model;
+				});
+			}
+
 			p5.setup = function(){
 				p5.createCanvas(0, 0, p5.WEBGL);
 				p5.windowResized();
@@ -48,135 +64,133 @@ class OrientationViewport{
 			}
 
 			p5.draw = function(){
+				// let rot = Quaternion.fromBetweenVectors(Object.values(parent.orientation_data.current_gravity), [0, 0, -1]);
+				// let rotated = rot.rotateVector(Object.values(parent.orientation_data.current_magnetometer));
+				// let angle = Math.atan2(rotated[1], rotated[0]);
+
 				p5.background(0);
 
-				p5.withState(() => {
+				p5.withState("orientation_viewport", () => {
+					p5.translate(100, 0, 0);
 					p5.rotateX(-.4);
 					p5.rotateY(.5);
 					p5.rotateX(p5.PI / 2);
 					p5.rotateZ(1);
-					p5.applyMatrix(
-						1, 0, 0, 0,
-						0, -1, 0, 0,
-						0, 0, 1, 0,
-						0, 0, 0, 1
-					)
+					p5.scale(1, -1, 1);
 					p5.noFill();
 
-					p5.stroke(255);
-					// let v = p5.createVector(parent.rot.x, parent.rot.y, parent.rot.z);
-					// v.setMag(50);
-					// p5.line(0, 0, 0, v.x, v.y, v.z);
-					p5.line(0, 0, 0, parent.rot.x, parent.rot.y, parent.rot.z);
-					p5.withState(() => {
-						p5.translate(0, 0, -50);
-						p5.box(100, 100, 0);
+					p5.withState("base_square", () => {
+						p5.stroke(255);
+						p5.strokeWeight(2);
+						p5.translate(0, 0, -parent.side_length);
+						p5.box(parent.side_length, parent.side_length, 0);
+						p5.withState("base_square_tick_marks", () => {
+							let half_side_length = .5 * parent.side_length;
+							let half_tick_length = 20;
+							let quarter_tick_length = .5 * half_tick_length;
+							let tick_start = half_side_length - half_tick_length;
+							let tick_end = half_side_length + half_tick_length;
+
+							p5.translate(0, 0, -2);
+							p5.stroke(255, 0, 0);
+							p5.line(tick_start, 0, tick_end, 0);
+							p5.stroke(0, 255, 0);
+							p5.line(0, tick_start, 0, tick_end);
+							p5.stroke(0, 0, 255);
+							p5.line(0, 0, 0, 0, 0, half_tick_length);
+
+							p5.stroke(255);
+							p5.strokeWeight(1);
+							p5.line(-quarter_tick_length, 0, quarter_tick_length, 0);
+							p5.line(0, -quarter_tick_length, 0, quarter_tick_length);
+						});
 					});
-					p5.applyQuaternion(parent.orientation_quaternion);
-					// p5.applyRotation(1, 0, 0, parent.a);
 
-					let side_length = parent.side_length;
-					let world_axis_length = .5 * parent.side_length;
-					let local_axis_length = .6 * parent.side_length;
+					p5.rotateZ(-parent.orientation_data.initial_heading);
+					p5.applyQuaternion(parent.orientation_data.current_delta);
+					p5.rotateZ(parent.orientation_data.initial_heading);
 
-					p5.stroke(255, 0, 0);
-					p5.line(0, 0, 0, world_axis_length, 0, 0);
-					p5.stroke(0, 255, 0);
-					p5.line(0, 0, 0, 0, world_axis_length, 0);
-					p5.stroke(0, 0, 255);
-					p5.line(0, 0, 0, 0, 0, world_axis_length);
+					// let side_length = parent.side_length;
+					// let world_axis_length = .5 * parent.side_length;
+					// let local_axis_length = .6 * parent.side_length;
 
-					p5.withState(() => {
+					// p5.stroke(255, 0, 0);
+					// p5.line(0, 0, 0, world_axis_length, 0, 0);
+					// p5.stroke(0, 255, 0);
+					// p5.line(0, 0, 0, 0, world_axis_length, 0);
+					// p5.stroke(0, 0, 255);
+					// p5.line(0, 0, 0, 0, 0, world_axis_length);
+
+					p5.withState("draw_model", () => {
 						p5.normalMaterial();
-						p5.box(50, 50, 50);
-					});
-
-
-					p5.withState(() => {
-
-						// parent.a += .01;
-
-						// parent.quaternion = {
-						// 	w: 0,
-						// 	i: p5.cos(parent.a),
-						// 	j: 0,
-						// 	k: p5.sin(parent.a)
-						// };
-
-						// p5.applyMatrix(
-						// 	1 - (2 * ((parent.quaternion.j ** 2) + (parent.quaternion.k ** 2))), 2 * ((parent.quaternion.i * parent.quaternion.j) - (parent.quaternion.w * parent.quaternion.k)), 2 * ((parent.quaternion.i * parent.quaternion.k) + (parent.quaternion.w * parent.quaternion.j)), 0,
-						// 	2 * ((parent.quaternion.i * parent.quaternion.j) + (parent.quaternion.w * parent.quaternion.k)), 1 - (2 * ((parent.quaternion.i ** 2) + (parent.quaternion.k ** 2))), 2 * ((parent.quaternion.j * parent.quaternion.k) - (parent.quaternion.w * parent.quaternion.i)), 0,
-						// 	2 * ((parent.quaternion.i * parent.quaternion.k) - (parent.quaternion.w * parent.quaternion.j)), 2 * ((parent.quaternion.j * parent.quaternion.k) + (parent.quaternion.w * parent.quaternion.i)), 1 - (2 * ((parent.quaternion.i ** 2) + (parent.quaternion.j ** 2))), 0,
-						// 	0, 0, 0, 1
-						// );
-						//
-						// p5.stroke(255);
-						// p5.box(side_length, side_length, side_length);
-						//
-						// p5.stroke(255, 0, 0);
-						// p5.line(-local_axis_length, -local_axis_length, -local_axis_length, local_axis_length, -local_axis_length, -local_axis_length);
-						// p5.stroke(0, 255, 0);
-						// p5.line(-local_axis_length, -local_axis_length, -local_axis_length, -local_axis_length, local_axis_length, -local_axis_length);
-						// p5.stroke(0, 0, 255);
-						// p5.line(-local_axis_length, -local_axis_length, -local_axis_length, -local_axis_length, -local_axis_length, local_axis_length);
-
+						// p5.box(50, 50, 50);
+						p5.translate(0, -40, 0);
+						p5.applyRotation(0, 0, 1, -2.5);
+						if(parent.model !== null) p5.model(parent.model);
 					});
 				});
 
-				p5.withState(() => {
+				p5.withState("flat_ui", () => {
 					p5.ortho();
-					p5.translate(100, 100, 0);
-					p5.strokeWeight(3);
-					p5.withState(() => {
-						p5.noStroke();
-						p5.rotate(p5.atan2(parent.rot.x, parent.rot.z));
-						p5.fill(40, 140, 200);
-						p5.arc(0, 0, 100, 100, 0, p5.PI, p5.OPEN);
-						p5.fill(200, 140, 40);
-						p5.arc(0, 0, 100, 100, p5.PI, p5.TWO_PI, p5.OPEN);
-						p5.withState(() => {
-							let pitch = -p5.atan2(parent.rot.z, parent.rot.y);
-							let mid_color;
-							p5.rotateX(pitch);
-							if(Math.abs(pitch) <= p5.HALF_PI){
-								mid_color = p5.color(200, 140, 40);
-							}else{
-								mid_color = p5.color(40, 140, 200);
-							}
-							p5.stroke(mid_color);
-							p5.line(-50, 0, 50, 0);
+					p5.translate(-200, 0, 100);
+					p5.rectMode(p5.CENTER);
+					p5.noStroke();
+					p5.fill(38);
+					p5.rect(0, 0, 200, p5.height);
+					p5.withState("artificial_horizon", () => {
+						p5.translate(0, -50, 0);
+						p5.strokeWeight(3);
+						p5.withState("roll_plane", () => {
+							p5.noStroke();
+							p5.rotate(-p5.atan2(parent.orientation_data.current_down.x, parent.orientation_data.current_down.z));
+							p5.fill(40, 140, 200);
+							p5.arc(0, 0, 100, 100, 0, p5.PI, p5.OPEN);
+							p5.fill(200, 140, 40);
+							p5.arc(0, 0, 100, 100, p5.PI, p5.TWO_PI, p5.OPEN);
+							p5.withState("pitch_plane", () => {
+								let pitch = p5.atan2(parent.orientation_data.current_down.z, parent.orientation_data.current_down.y);
+								let mid_color;
+								p5.rotateX(pitch);
+								if(Math.abs(pitch) <= p5.HALF_PI){
+									mid_color = p5.color(40, 140, 200);
+								}else{
+									mid_color = p5.color(200, 140, 40);
+								}
+								p5.stroke(mid_color);
+								p5.line(-50, 0, 50, 0);
+								p5.stroke(191);
+								p5.fill(mid_color);
+								p5.ellipse(0, 0, 100, 100);
+
+								p5.stroke(63);
+								p5.noFill();
+								p5.strokeWeight(2);
+								for(let angle = -90; angle <= 90; angle += 15){
+									if(angle == 0) continue;
+									p5.withState("minor_pitch_lines", () => {
+										p5.rotateX(p5.radians(angle));
+										if(angle % 30 == 0){
+											p5.strokeWeight(2);
+										}else{
+											p5.strokeWeight(1);
+										}
+										p5.arc(0, 0, 100, 100, -p5.HALF_PI - .25, -p5.HALF_PI + .25);
+									});
+								}
+							});
 							p5.stroke(191);
-							p5.fill(mid_color);
-							p5.ellipse(0, 0, 100, 100);
-
-							p5.stroke(63);
 							p5.noFill();
-							p5.strokeWeight(2);
-							for(let angle = -90; angle <= 90; angle += 15){
-								if(angle == 0) continue;
-								p5.withState(() => {
-									p5.rotateX(p5.radians(angle));
-									if(angle % 30 == 0){
-										p5.strokeWeight(2);
-									}else{
-										p5.strokeWeight(1);
-									}
-									p5.arc(0, 0, 100, 100, p5.HALF_PI - .25, p5.HALF_PI + .25);
-								});
-							}
+							p5.withState("border", () => {
+								p5.translate(0, 0, 50);
+								p5.ellipse(0, 0, 100, 100);
+							});
 						});
-						p5.stroke(191);
-						p5.noFill();
-						p5.withState(() => {
-							p5.translate(0, 0, 50);
-							p5.ellipse(0, 0, 100, 100);
-						});
-					});
 
-					p5.stroke(200, 100, 0);
-					p5.strokeWeight(2);
-					p5.line(-30, 0, 50, -10, 0, 50);
-					p5.line(10, 0, 50, 30, 0, 50);
+						p5.stroke(200, 100, 0);
+						p5.strokeWeight(2);
+						p5.line(-30, 0, 50, -10, 0, 50);
+						p5.line(10, 0, 50, 30, 0, 50);
+					});
 				});
 			}
 		}, container);
