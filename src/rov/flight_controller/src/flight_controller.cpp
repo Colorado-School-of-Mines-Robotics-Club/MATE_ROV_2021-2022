@@ -210,7 +210,14 @@ private:
         Eigen::Matrix<double, NUM_THRUSTERS, 1> throttles = thrust2throttle(this->thruster_geometry_full_piv_lu->solve(forcesAndTorques));
 
         // publish PWM values
-        for(int i = 0; i < NUM_THRUSTERS; i++) {
+        for(int i = 0; i < 3; i++) {
+            rov_interfaces::msg::PWM msg;
+            msg.angle_or_throttle = static_cast<float>(throttles(i,0)); // this is a source of noise in output signals, may cause system instability??
+            msg.is_continuous_servo = true;
+            msg.channel = i;
+            _publisher->publish(msg);
+        }
+        for(int i = 12; i < 16; i++) {
             rov_interfaces::msg::PWM msg;
             msg.angle_or_throttle = static_cast<float>(throttles(i,0)); // this is a source of noise in output signals, may cause system instability??
             msg.is_continuous_servo = true;
