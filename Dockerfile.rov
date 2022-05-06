@@ -8,14 +8,18 @@ RUN apt-get update
 RUN apt-get install -y \
     libpugixml-dev libeigen3-dev
 
+RUN python3.6 -m pip install transitions
+
 COPY src .
 COPY launch .
 COPY setup/ros_entrypoint.sh .
 
+
 # ensure dependencies are updated, and build
+# RUN rosdep update && \
+#     rosdep install --ignore-src -y src/rov/
 RUN . /opt/ros/$ROS_DISTRO/install/setup.sh && \
-    rosdep install --ignore-src --from-paths external/SMACC2 -y -r && \
-    colcon build --packages-skip 
+    colcon build --packages-up-to bar02 bno055 flight_controller manipulator_control pca9685_node rov_cameras rov_estop rov_interfaces rov_launch rov_statistics
 
 # Copy over initial run stuff.
 # Entrypoint can more or less be understood as "run this no matter what". It sources the ROS install.

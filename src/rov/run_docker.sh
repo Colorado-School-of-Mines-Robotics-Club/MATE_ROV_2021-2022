@@ -1,0 +1,2 @@
+#! /bin/bash
+docker run -it --rm -v /bin/systemctl:/bin/systemctl -v /run/systemd/system:/run/systemd/system -v /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket -v /sys/fs/cgroup:/sys/fs/cgroup --net=host --pid=host -v /dev:/dev --privileged --entrypoint /bin/bash csmmaterobotics/rov:latest

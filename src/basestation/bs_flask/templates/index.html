@@ -8,22 +8,16 @@
 		<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js" integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU=" crossorigin="anonymous"></script>
 		<!-- <script type="text/javascript" src="{{ url_for('static', filename='jquery-ui.min.js') }}"></script> -->
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+		<script src="https://cdn.jsdelivr.net/gh/infusion/Quaternion.js@2.0.0/quaternion.min.js"></script>
 		<!-- <script type="text/javascript" src="{{ url_for('static', filename='cameraViewport.js') }}"></script> -->
-		<!-- <script type="text/javascript" src="{{ url_for('static', filename='orientationViewport.js') }}"></script> -->
+		<script type="text/javascript" src="{{ url_for('static', filename='orientationViewport.js') }}"></script>
 		<script type="text/javascript" src="{{ url_for('static', filename='script.js') }}"></script>
 	</head>
 	<body>
 		<table id="root" class="viewport-container">
-			<colgroup>
-				<col span="1" style="width:60%">
-			</colgroup>
-			<tr style="height:75%">
-				<td id="camera-viewport-section">{% include "viewports/camera_viewport_section.html" %}</td>
-				<td id="info-viewport">{% include "viewports/info_viewport.html" %}</td>
-			</tr>
 			<tr>
-				<td id="statistics-viewport">{% include "viewports/statistics_viewport.html" %}</td>
-				<td id="shell-viewport">{% include "viewports/shell_viewport.html" %}</td>
+				<td id="camera-viewport-section">{% include "viewports/camera_viewport_section.html" %}</td>
+				<td id="info-viewport" style="height: 100%; width: 40%;">{% include "viewports/info_viewport.html" %}</td>
 			</tr>
 		</table>
 	</body>
