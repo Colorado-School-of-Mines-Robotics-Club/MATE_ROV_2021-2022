@@ -23,19 +23,19 @@ $(function(){
 					$("#shell-output").text(command_result.result);
 				}).catch((command_result, success, response_object) => {
 					console.error(`Erorr recieving command result from Flask (status ${response_object.status}):`, response_object);
-				})
+				});
 			}
 		});
 
 		$(document).keyup(key => {
 			if(key.which == 115){ // F4
 				$.getJSON("/shell",
-					$.param({command: "exit()"}, true)
-				)
+					$.param({command: "ros2_node.estop()"}, true)
+				);
 			}
-		})
+		});
 
-		/*let*/ orientation_viewport = new OrientationViewport(document.getElementById("orientation-viewport"));
+		let orientation_viewport = new OrientationViewport(document.getElementById("orientation-viewport"));
 
 		let button_active_color = "#2eb398";
 		let button_inactive_color = "white";

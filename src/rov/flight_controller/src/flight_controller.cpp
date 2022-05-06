@@ -241,10 +241,10 @@ private:
         for(int i = 0; i < NUM_THRUSTERS; i++) {
             if(thrust(i,0) < MIN_THROTTLE_CUTOFF) {
                 // see documentation to understand origin of this equation
-                toret(i,0) = max(-0.0991 + 0.0505 * thrust(i,0) + 1.22e-3 * pow(thrust(i,0),2) + 1.91e-5 * pow(thrust(i,0),3),-1);
+                toret(i,0) = std::max(-0.0991 + 0.0505 * thrust(i,0) + 1.22e-3 * pow(thrust(i,0),2) + 1.91e-5 * pow(thrust(i,0),3),-1.0);
             } else if (toret(i,0) > MAX_THROTTLE_CUTOFF) {
                 // see documentation to understand origin of this equation
-                toret(i,0) = min(0.0986 + 0.0408 * thrust(i,0) + -8.14e-4 * pow(thrust(i,0),2) + 1.01e-5 * pow(thrust(i,0),3),1);
+                toret(i,0) = std::min(0.0986 + 0.0408 * thrust(i,0) + -8.14e-4 * pow(thrust(i,0),2) + 1.01e-5 * pow(thrust(i,0),3),1.0);
             } else {
                 toret(i,0) = 0;
             }

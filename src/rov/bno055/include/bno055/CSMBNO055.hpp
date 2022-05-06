@@ -299,11 +299,8 @@ public:
     int m_fdBNO;
     int m_i2cChannel;
 private:
-    // const Eigen::Quaterniond rotation = Eigen::Quaterniond(-0.5,-0.5,-0.5,-0.5);
-
     uint8_t read8(uint8_t reg);
     bool readLen(uint8_t reg, uint8_t* buf, uint8_t len);
-    bool write8(uint8_t reg, uint8_t value);
 
     uint8_t m_address;
     uint8_t m_sensorID;
