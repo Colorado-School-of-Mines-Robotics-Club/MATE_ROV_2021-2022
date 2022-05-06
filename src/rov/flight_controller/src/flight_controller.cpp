@@ -41,15 +41,15 @@ public:
                                 IYX,IYY,IYZ,
                                 IZX,IZY,IZZ;
         // define thrusters TODO: replace with a config file? (temp values atm)
-        float x = sqrt(2);
-        thrusters[0] = Thruster(Eigen::Vector3d(0.5,    0.5,    -0.5),  Eigen::Vector3d(0, 0,-1));
-        thrusters[1] = Thruster(Eigen::Vector3d(-0.5,   0.5,    -0.5),  Eigen::Vector3d(0, 0,-1));
-        thrusters[2] = Thruster(Eigen::Vector3d(0.5,    -0.5,   -0.5),  Eigen::Vector3d(0, 0,-1));
-        thrusters[3] = Thruster(Eigen::Vector3d(-0.5,   -0.5,   -0.5),  Eigen::Vector3d(0, 0,-1));
-        thrusters[4] = Thruster(Eigen::Vector3d(0.5,    0.5,    0),     Eigen::Vector3d(-x,  x, 0));
-        thrusters[5] = Thruster(Eigen::Vector3d(-0.5,   0.5,    0),     Eigen::Vector3d(x,   x, 0));
-        thrusters[6] = Thruster(Eigen::Vector3d(0.5,    -0.5,   0),     Eigen::Vector3d(-x, -x, 0));
-        thrusters[7] = Thruster(Eigen::Vector3d(-0.5,   -0.5,   0),     Eigen::Vector3d(x,  -x, 0));
+        float x = sqrt(2)/2;
+        thrusters[0] = Thruster(Eigen::Vector3d(0.5,    0.5,    -0.5),  Eigen::Vector3d(0, 0,-1), 0);
+        thrusters[1] = Thruster(Eigen::Vector3d(-0.5,   0.5,    -0.5),  Eigen::Vector3d(0, 0,-1), 15);
+        thrusters[2] = Thruster(Eigen::Vector3d(0.5,    -0.5,   -0.5),  Eigen::Vector3d(0, 0,-1), 3);
+        thrusters[3] = Thruster(Eigen::Vector3d(-0.5,   -0.5,   -0.5),  Eigen::Vector3d(0, 0,-1), 13);
+        thrusters[4] = Thruster(Eigen::Vector3d(0.5,    0.5,    0),     Eigen::Vector3d(-x,  x, 0), 2);
+        thrusters[5] = Thruster(Eigen::Vector3d(-0.5,   0.5,    0),     Eigen::Vector3d(x,   x, 0), 12);
+        thrusters[6] = Thruster(Eigen::Vector3d(0.5,    -0.5,   0),     Eigen::Vector3d(-x, -x, 0), 1);
+        thrusters[7] = Thruster(Eigen::Vector3d(-0.5,   -0.5,   0),     Eigen::Vector3d(x,  -x, 0), 14);
 
         std::array<Eigen::VectorXd, NUM_THRUSTERS> temp;
         for(int i = 0; i < NUM_THRUSTERS; i++) {
@@ -64,8 +64,10 @@ public:
             thruster_geometry.col(i) << temp[i];
         }
         
-        // compute the full pivoting LU decomposition of the thruster geometry
-        this->thruster_geometry_full_piv_lu = std::make_shared<Eigen::FullPivLU<Eigen::Matrix<double, 6, NUM_THRUSTERS>> const>(this->thruster_geometry.fullPivLu());
+        // compute the pseudo inverse of the thruster geometry
+        this->thruster_geometry_pseudo_inverse = this->thruster_geometry.transpose() * (this->thruster_geometry*this->thruster_geometry.transpose()).inverse();
+        this->thruster_coefficient_matrix << 30, 30, 30, 30, 30, 30, 30, 30; // thrusters are identical T200s running at ~12V
+        this->thruster_coefficient_matrix_times_geometry = this->thruster_coefficient_matrix * this->thruster_geometry_pseudo_inverse;
 
         // use PWM service to register thrusters on PCA9685
         this->registerThrusters();
@@ -161,12 +163,16 @@ private:
         };
 
         // P + I + D
-        desired_force = P(kp,linear_velocity_err) 
-                        + (linear_integral += I(ki, linear_velocity_err, dt_ms)) 
+        desired_force = P(kp,linear_velocity_err)
+                        + (linear_integral += I(ki, linear_velocity_err, dt_ms))
                         + D(kd, linear_velocity_err, linear_velocity_err_last, dt_ms);
 
         // this is direct mapping from velocity to output force
-        // warning: no proportional controller might be unweildy to use
+        // warning: no proportional controller; might be unweildy to use
+        // in continuous time
+        // F = ma = m * dv/dt
+        // in discrete time
+        // F = m * delta v / delta t ; accurate only if delta t is small
         // desired_force(0,0) = (translation_setpoints(0,0) - translation_setpoints_last(0,0));
         // desired_force(1,0) = (translation_setpoints(1,0) - translation_setpoints_last(1,0));
         // desired_force(2,0) = (translation_setpoints(2,0) - translation_setpoints_last(2,0));
@@ -185,7 +191,8 @@ private:
         }
 
         // Non Linear P^2 Quaternion based control scheme
-        // see: http://www.diva-portal.org/smash/get/diva2:1010947/FULLTEXT01.pdf
+        // For derivation of controller see: http://www.diva-portal.org/smash/get/diva2:1010947/FULLTEXT01.pdf
+        // For derivation of dynamics and control allocation see: https://flex.flinders.edu.au/file/27aa0064-9de2-441c-8a17-655405d5fc2e/1/ThesisWu2018.pdf
         auto q_err = quaternion_reference * quaternion_measured.conjugate(); // hamilton product (hopefully)
         Eigen::Vector3d axis_err;
 
@@ -198,31 +205,21 @@ private:
         desired_torque = (-Pq * axis_err) - (Pw * omega);
 
         // control allocation
+        // u = K^-1 * T^+ * t
+        // 8x1 = 8x8 * 8x6 * 6x1 :)
         Eigen::Matrix<double, 6, 1> forcesAndTorques;
-        forcesAndTorques(0,0) = desired_force.x();
-        forcesAndTorques(1,0) = desired_force.y();
-        forcesAndTorques(2,0) = desired_force.z();
-        forcesAndTorques(3,0) = desired_torque.x();
-        forcesAndTorques(4,0) = desired_torque.y();
-        forcesAndTorques(5,0) = desired_torque.z();
+        forcesAndTorques << desired_force << desired_torque;
 
         // solve Ax = b and normalize thrust such that it satisfies MIN_THRUST_VALUE <= throttles[j] <= MAX_THRUST_VALUE 
         // while scaling thrusters to account for large thrust demands on a single thruster
-        Eigen::Matrix<double, NUM_THRUSTERS, 1> throttles = thrust2throttle(this->thruster_geometry_full_piv_lu->solve(forcesAndTorques));
+        Eigen::Matrix<double, NUM_THRUSTERS, 1> throttles = thrust2throttle((this->thruster_coefficient_matrix_times_geometry) * forcesAndTorques);
 
         // publish PWM values
-        for(int i = 0; i < 3; i++) {
+        for(int i = 0; i < NUM_THRUSTERS; i++) {
             rov_interfaces::msg::PWM msg;
             msg.angle_or_throttle = static_cast<float>(throttles(i,0)); // this is a source of noise in output signals, may cause system instability??
             msg.is_continuous_servo = true;
-            msg.channel = i;
-            _publisher->publish(msg);
-        }
-        for(int i = 12; i < 16; i++) {
-            rov_interfaces::msg::PWM msg;
-            msg.angle_or_throttle = static_cast<float>(throttles(i,0)); // this is a source of noise in output signals, may cause system instability??
-            msg.is_continuous_servo = true;
-            msg.channel = i;
+            msg.channel = thruster_index_to_PWM_pin.at(i);
             _publisher->publish(msg);
         }
     }
@@ -278,7 +275,10 @@ private:
     Eigen::Vector3d linear_velocity_err_last;
     std::array<Thruster, NUM_THRUSTERS> thrusters;
     Eigen::Matrix<double, 6, NUM_THRUSTERS> thruster_geometry;
-    std::shared_ptr<Eigen::FullPivLU<Eigen::Matrix<double, 6, NUM_THRUSTERS>> const> thruster_geometry_full_piv_lu;
+    Eigen::Matrix<double, NUM_THRUSTERS, 6> thruster_geometry_pseudo_inverse;
+    Eigen::DiagonalMatrix<double, NUM_THRUSTERS> thruster_coefficient_matrix;
+    Eigen::Matrix<double, NUM_THRUSTERS, 6> thruster_coefficient_matrix_times_geometry;
+    std::unordered_map<int, int> thruster_index_to_PWM_pin;
     Eigen::MatrixXd inertia_tensor = Eigen::MatrixXd(3,3);
 
     double Pq = 1.0, Pw = 1.0; // TODO: tune these gain constants
