@@ -41,14 +41,15 @@ public:
                                 IYX,IYY,IYZ,
                                 IZX,IZY,IZZ;
         // define thrusters TODO: replace with a config file? (temp values atm)
-        thrusters[0] = Thruster(Eigen::Vector3d(1,0,0), Eigen::Vector3d(1,0,0));
-        thrusters[1] = Thruster(Eigen::Vector3d(0,1,0), Eigen::Vector3d(1,0,0));
-        thrusters[2] = Thruster(Eigen::Vector3d(0,0,1), Eigen::Vector3d(0,1,0));
-        thrusters[3] = Thruster(Eigen::Vector3d(0,0,0), Eigen::Vector3d(0,1,0));
-        thrusters[4] = Thruster(Eigen::Vector3d(-1,0,0), Eigen::Vector3d(0,0,1));
-        thrusters[5] = Thruster(Eigen::Vector3d(0,-1,0), Eigen::Vector3d(0,0,1));
-        thrusters[6] = Thruster(Eigen::Vector3d(0,0,-1), Eigen::Vector3d(-1,0,0));
-        thrusters[7] = Thruster(Eigen::Vector3d(0,1,1), Eigen::Vector3d(0,0,-1));
+        float x = sqrt(2);
+        thrusters[0] = Thruster(Eigen::Vector3d(0.5,    0.5,    -0.5),  Eigen::Vector3d(0, 0,-1));
+        thrusters[1] = Thruster(Eigen::Vector3d(-0.5,   0.5,    -0.5),  Eigen::Vector3d(0, 0,-1));
+        thrusters[2] = Thruster(Eigen::Vector3d(0.5,    -0.5,   -0.5),  Eigen::Vector3d(0, 0,-1));
+        thrusters[3] = Thruster(Eigen::Vector3d(-0.5,   -0.5,   -0.5),  Eigen::Vector3d(0, 0,-1));
+        thrusters[4] = Thruster(Eigen::Vector3d(0.5,    0.5,    0),     Eigen::Vector3d(-x,  x, 0));
+        thrusters[5] = Thruster(Eigen::Vector3d(-0.5,   0.5,    0),     Eigen::Vector3d(x,   x, 0));
+        thrusters[6] = Thruster(Eigen::Vector3d(0.5,    -0.5,   0),     Eigen::Vector3d(-x, -x, 0));
+        thrusters[7] = Thruster(Eigen::Vector3d(-0.5,   -0.5,   0),     Eigen::Vector3d(x,  -x, 0));
 
         std::array<Eigen::VectorXd, NUM_THRUSTERS> temp;
         for(int i = 0; i < NUM_THRUSTERS; i++) {
