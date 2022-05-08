@@ -66,7 +66,7 @@ public:
         
         // compute the pseudo inverse of the thruster geometry
         this->thruster_geometry_pseudo_inverse = this->thruster_geometry.transpose() * (this->thruster_geometry*this->thruster_geometry.transpose()).inverse();
-        this->thruster_coefficient_matrix << 30, 30, 30, 30, 30, 30, 30, 30; // thrusters are identical T200s running at ~12V
+        this->thruster_coefficient_matrix.diagonal() << 30.0, 30.0, 30.0, 30.0, 30.0, 30.0, 30.0, 30.0; // thrusters are identical T200s running at ~12V
         this->thruster_coefficient_matrix_times_geometry = this->thruster_coefficient_matrix * this->thruster_geometry_pseudo_inverse;
 
         // use PWM service to register thrusters on PCA9685
@@ -208,7 +208,7 @@ private:
         // u = K^-1 * T^+ * t
         // 8x1 = 8x8 * 8x6 * 6x1 :)
         Eigen::Matrix<double, 6, 1> forcesAndTorques;
-        forcesAndTorques << desired_force << desired_torque;
+        forcesAndTorques << desired_force, desired_torque;
 
         // solve Ax = b and normalize thrust such that it satisfies MIN_THRUST_VALUE <= throttles[j] <= MAX_THRUST_VALUE 
         // while scaling thrusters to account for large thrust demands on a single thruster
