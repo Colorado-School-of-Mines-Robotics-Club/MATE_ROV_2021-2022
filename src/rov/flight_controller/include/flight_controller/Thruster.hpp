@@ -5,7 +5,7 @@
 
 struct Thruster {
     Thruster();
-    Thruster(Eigen::Vector3d& position, Eigen::Vector3d& thrust, int pwm_pin);
+    Thruster(Eigen::Vector3d position, Eigen::Vector3d thrust, int pwm_pin);
     Eigen::Vector3d position;
     Eigen::Vector3d thrust;
     int pwm_pin;
