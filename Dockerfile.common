@@ -1,4 +1,4 @@
-FROM dustynv/ros:foxy-ros-base-l4t-r32.6.1
+FROM dustynv/ros:foxy-ros-base-l4t-r34.1.0
 
 # add apt repository for GCC/G++ compiler
 RUN apt-get update && apt-get install build-essential -y software-properties-common
@@ -69,3 +69,6 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 0 
 RUN update-alternatives --set python3 /usr/bin/python3.6 && \
     update-alternatives --set g++ /usr/bin/g++-11 && \
     update-alternatives --set gcc /usr/bin/gcc-11
+
+# install gstreamer
+RUN apt-get install -y gstreamer1.0-plugins-base
