@@ -60,11 +60,15 @@ RUN update-alternatives --set python3 /usr/bin/python3.6 && \
     update-alternatives --set gcc /usr/bin/gcc-11
 
 # boooost
+
 RUN wget https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.tar.bz2 && \
     tar -xf boost_1_78_0.tar.bz2 && \
     rm boost_1_78_0.tar.bz2 && \
     cd boost_1_78_0 && \
     ./bootstrap.sh --prefix=/usr/local
+RUN cd boost_1_78_0 && \
+    touch user-config.jam && \
+    echo "using python : 3.6 : /usr/bin/python3.6;" > user-config.jam 
 RUN cd boost_1_78_0 && \
     ./b2 && \
     ./b2 headers && \
