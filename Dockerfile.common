@@ -47,18 +47,6 @@ RUN python3.6 -m pip install opencv-python Jetson.GPIO
 # some apt dependencies
 RUN apt-get install -y apt-utils libi2c-dev i2c-tools apt-utils python3-colcon-common-extensions python3-vcstool
 
-# boooost
-RUN wget https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.tar.bz2 && \
-    tar -xf boost_1_78_0.tar.bz2 && \
-    rm boost_1_78_0.tar.bz2 && \
-    cd boost_1_78_0 && \
-    ./bootstrap.sh --prefix=/usr/local
-RUN cd boost_1_78_0 && \
-    ./b2 headers && \
-    ./b2 install && \
-    cd .. && \
-    rm -rf boost_1_78_0
-
 # python dependencies
 RUN apt-get install libdbus-1-dev
 RUN python3.6 -m pip install dbus-python
@@ -70,6 +58,18 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 0 
 RUN update-alternatives --set python3 /usr/bin/python3.6 && \
     update-alternatives --set g++ /usr/bin/g++-11 && \
     update-alternatives --set gcc /usr/bin/gcc-11
+
+# boooost
+RUN wget https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.tar.bz2 && \
+    tar -xf boost_1_78_0.tar.bz2 && \
+    rm boost_1_78_0.tar.bz2 && \
+    cd boost_1_78_0 && \
+    ./bootstrap.sh --prefix=/usr/local
+RUN cd boost_1_78_0 && \
+    ./b2 headers && \
+    ./b2 install && \
+    cd .. && \
+    rm -rf boost_1_78_0
 
 # install gstreamer
 RUN apt-get install -y gstreamer1.0-tools gstreamer1.0-alsa \
