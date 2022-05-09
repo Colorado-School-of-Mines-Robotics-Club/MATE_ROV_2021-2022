@@ -66,10 +66,10 @@ RUN wget https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_
     cd boost_1_78_0 && \
     ./bootstrap.sh --prefix=/usr/local
 RUN cd boost_1_78_0 && \
+    ./b2 && \
     ./b2 headers && \
-    ./b2 install && \
-    cd .. && \
-    rm -rf boost_1_78_0
+    ./b2 install
+RUN rm -rf boost_1_78_0
 
 # install gstreamer
 RUN apt-get install -y gstreamer1.0-tools gstreamer1.0-alsa \
