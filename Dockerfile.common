@@ -23,7 +23,7 @@ RUN apt-get update
 RUN apt-get clean
 RUN apt-get update
 RUN apt-get install -y \ 
-    git python3.6 python3-pip python3-distutils
+    git python3.6 python3.6-distutils
 
 # ensure python3.6 has most up to date version of pip
 RUN curl https://bootstrap.pypa.io/pip/3.6/get-pip.py -o get-pip.py && \
