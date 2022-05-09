@@ -61,13 +61,13 @@ RUN update-alternatives --set python3 /usr/bin/python3.6 && \
 
 # boooost
 RUN wget https://downloads.sourceforge.net/project/boost/boost/1.78.0/boost_1_78_0.tar.gz \
-  && tar xfz boost_1_60_0.tar.gz \
-  && rm boost_1_60_0.tar.gz \
-  && cd boost_1_60_0 \
+  && tar xfz boost_1_78_0.tar.gz \
+  && rm boost_1_78_0.tar.gz \
+  && cd boost_1_78_0 \
   && ./bootstrap.sh --prefix=/usr/local --with-libraries=program_options \
   && ./b2 install \
   && cd .. \
-  && rm -rf boost_1_60_0
+  && rm -rf boost_1_78_0
 
 # install gstreamer
 RUN apt-get install -y gstreamer1.0-tools gstreamer1.0-alsa \
