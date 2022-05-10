@@ -108,3 +108,4 @@ RUN wget -O opencv.zip https://github.com/opencv/opencv/archive/4.5.0.zip && \
     make install
 RUN update-alternatives --set g++ /usr/bin/g++-11 && \
     update-alternatives --set gcc /usr/bin/gcc-11
+RUN apt-get install -y gstreamer1.0-x
