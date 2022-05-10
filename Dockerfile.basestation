@@ -4,14 +4,6 @@ FROM csmmaterobotics/commonv8
 # By default, this is root, which makes colcon build not work at all
 WORKDIR /opt/ros/CSM_MATE_WS
 
-# install nanogui
-RUN git clone https://github.com/wjakob/nanogui && \ 
-    cd nanogui && git submodule update --init --remote && \
-    mkdir build && cd build && \
-    cmake ../ && \
-    make -j 12 install && cd ../../ && \
-    rm -rf nanogui
-
 # Base station specific dependencies
 # Probably don't use VENV. Colcon has a rough time with it and it's not worth it
 # RUN python3.6 -m venv /BASE_VENV

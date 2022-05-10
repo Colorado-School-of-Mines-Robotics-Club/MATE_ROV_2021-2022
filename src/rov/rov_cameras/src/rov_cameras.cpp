@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <unordered_map>
 #include <vector>
+#include <memory>
 
 #include <rclcpp/rclcpp.hpp>
 #include <compressed_image_transport/compression_common.h>
@@ -21,7 +22,7 @@
 
 using namespace std::chrono_literals;
 
-const std::string pipeline = std::string("v4l2src ! device=%s io-mode=2, width=320, height=240, framerate=30/1 ! jpegparse ! nvjpegdec ! video/x-raw, format=(string)mjpeg ! nvvidconv ! video/x-raw, format=(string)BGR ! nvvidconv ! video/x-raw, format=(string)BGR ! appsink");
+const std::string pipeline = std::string("\"v4l2src device=%s io-mode=2 ! 'image/jpeg,framerate=30/1,width=320,height=240' ! avdec_mjpeg ! video/x-raw ! nvvidconv ! 'video/x-raw(memory:NVMM),format=BGRx' ! nvvidconv ! video/x-raw, format=BGRx ! appsink\"");
 
 template<typename ... Args>
 std::string string_format( const std::string& format, Args ... args )
@@ -148,7 +149,7 @@ private:
                 // test filenames to see if camera is available
                 for(std::string camera_path : filenames) {
                     // TODO: TEST PIPELINE camSet='v4l2src device=/dev/video0 io-mode=2 ! avdec_mjpeg ! nvvidconv ! video/x-raw,width=320,height=240,format=BGR,framerate=30/1 ! appsink'
-                    std::shared_ptr<cv::VideoCapture> camera_device = std::make_shared<cv::VideoCapture>(string_format(pipeline, camera_path), cv::CAP_GSTREAMER);
+                    std::shared_ptr<cv::VideoCapture> camera_device = std::make_shared<cv::VideoCapture>(string_format(pipeline, camera_path.c_str()), cv::CAP_GSTREAMER);
                     usleep(1000 * 1000); // ensure camera is captured and opened
                     if(!camera_device->isOpened()) {
                         RCLCPP_DEBUG(this->get_logger(), "During reconnection attempt of Camera %i, %s is not a camera or could not be opened (might already be in use).", camera, camera_path);
@@ -188,14 +189,17 @@ private:
 
         // test filenames to see if camera is available
         for(std::string camera_path : filenames) {
-            std::shared_ptr<cv::VideoCapture> camera = std::make_shared<cv::VideoCapture>(string_format(pipeline, camera_path), cv::CAP_GSTREAMER);
+            std::cout << "Evaluating pipeline: " << string_format(pipeline, camera_path.c_str()) << std::endl;
+            std::shared_ptr<cv::VideoCapture> camera = std::make_shared<cv::VideoCapture>(string_format(pipeline, camera_path.c_str()), cv::CAP_GSTREAMER);
             usleep(1000 * 1000); // ensure camera is captured and opened
             if(!camera->isOpened()) {
                 RCLCPP_DEBUG(this->get_logger(), "%s is not a camera or could not be opened.", camera_path);
+                std::cout << camera_path << " is not a camera or could not be opened." << std::endl;
             } else {
                 camera->set(cv::CAP_PROP_FRAME_WIDTH,320);
                 camera->set(cv::CAP_PROP_FRAME_HEIGHT,240);
                 RCLCPP_DEBUG(this->get_logger(), "%s successfully opened as video capture object", camera_path);
+                std::cout << camera_path << " successfully opened as video capture object" << std::endl;
                 this->cameras.push_back(camera);
             }
         }
