@@ -11,6 +11,8 @@
 #include <unordered_map>
 #include <vector>
 #include <memory>
+#include <signal.h>
+#include <functional>
 
 #include <rclcpp/rclcpp.hpp>
 #include <compressed_image_transport/compression_common.h>
@@ -22,7 +24,13 @@
 
 using namespace std::chrono_literals;
 
-const std::string pipeline = std::string("\"v4l2src device=%s io-mode=2 ! 'image/jpeg,framerate=30/1,width=320,height=240' ! avdec_mjpeg ! video/x-raw ! nvvidconv ! 'video/x-raw(memory:NVMM),format=BGRx' ! nvvidconv ! video/x-raw, format=BGRx ! appsink\"");
+// Testing Pipeline
+// const std::string pipeline = std::string("videotestsrc ! video/x-raw,format=RGBA ! appsink");
+
+// Release Pipeline
+// IF YOU TOUCH THIS I WILL KILL YOU
+const std::string pipeline = std::string("v4l2src device=%s io-mode=2 ! image/jpeg,framerate=30/1,width=320,height=240 ! nvv4l2decoder mjpeg=1 ! nvvidconv ! video/x-raw(memory:NVMM),format=NV12 ! nvvidconv ! video/x-raw,format=RGBA ! videoconvert ! video/x-raw,format=BGR ! videoconvert ! appsink");
+
 
 template<typename ... Args>
 std::string string_format( const std::string& format, Args ... args )
@@ -64,10 +72,22 @@ public:
         this->workers.push_back(std::thread(std::bind(&ROV_Cameras::camera_callback, this, 3, std::reference_wrapper<bool>(this->running))));
 
         // ensure this ROS node does not exit before destructor is called, do nothing every 100ms :)
-        this->create_wall_timer(100ms, std::bind(&ROV_Cameras::do_nothing, this));
+        do_nothing_timer = this->create_wall_timer(100ms, std::bind(&ROV_Cameras::do_nothing, this));
     }
 
     ~ROV_Cameras() {
+        this->running = false;
+        usleep(40*1000); 
+        // ensure threads are shutdown, join before destruction
+        for(std::size_t i = 0; i < this->workers.size(); i++) {
+            workers[i].join();
+        }
+        for(std::size_t i = 0; i < this->cameras.size(); i++) {
+            cameras[i]->release(); // explicitly release them (destructor works aswell but doesnt hurt to be safe)
+        }
+    }
+
+    void sigint() {
         this->running = false;
         usleep(40*1000); 
         // ensure threads are shutdown, join before destruction
@@ -85,16 +105,20 @@ private:
     }
 
     void camera_control(int cam, const std_msgs::msg::Bool::SharedPtr state) {
+        std::cout << "camera control callback" << std::endl;
         std::lock_guard<std::mutex>(this->should_camera_run_mutex[cam]);
         this->should_camera_run[cam] = state->data;
     }
 
     void camera_callback(int camera, std::reference_wrapper<bool> shouldBeRunning) {
         // ensure this index is valid
-        if(this->cameras.size()-1 < static_cast<std::size_t>(camera))
+        if(this->cameras.size()-1 < static_cast<std::size_t>(camera)) {
+            std::cout << "camera" << camera << " is not created. Destroying this thread" << std::endl;
             return;
+        }
         if(!this->cameras[camera]->isOpened()) {
             std::cout << "camera not opened" << std::endl;
+            std::cout << "camera" << camera << " was created, but is not opened. Destroying this thread" << std::endl;
             return;
         }
         // create single buffer for images (is copied later)
@@ -108,12 +132,14 @@ private:
             if(!this->should_camera_run[camera]) {
                 this->should_camera_run_mutex[camera].unlock();
                 continue;
+            } else {
+                this->should_camera_run_mutex[camera].unlock();
             }
             // get frame
             if(this->cameras[camera]->read(image)) {
                 // to locally test cameras uncomment these lines
-                // cv::imshow("test", image);
-                // cv::waitKey(1);
+                cv::imshow("test", image);
+                cv::waitKey(1);
                 sensor_msgs::msg::CompressedImage msg;
                 std_msgs::msg::Header header = std_msgs::msg::Header();
                 header.set__stamp(this->now());
@@ -148,7 +174,6 @@ private:
 
                 // test filenames to see if camera is available
                 for(std::string camera_path : filenames) {
-                    // TODO: TEST PIPELINE camSet='v4l2src device=/dev/video0 io-mode=2 ! avdec_mjpeg ! nvvidconv ! video/x-raw,width=320,height=240,format=BGR,framerate=30/1 ! appsink'
                     std::shared_ptr<cv::VideoCapture> camera_device = std::make_shared<cv::VideoCapture>(string_format(pipeline, camera_path.c_str()), cv::CAP_GSTREAMER);
                     usleep(1000 * 1000); // ensure camera is captured and opened
                     if(!camera_device->isOpened()) {
@@ -214,15 +239,27 @@ private:
     std::unordered_map<int, std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::CompressedImage>>> image_publishers;
     bool running = true;
 
+    rclcpp::TimerBase::SharedPtr do_nothing_timer;
+
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr camera_control0;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr camera_control1;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr camera_control2;
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr camera_control3;
 };
 
+namespace {
+    std::function<void(int)> sigint_handler;
+    void signal_handler(int signal) {
+        sigint_handler(signal);
+    }
+}
+
 int main(int argc, char ** argv) {
     std::this_thread::sleep_for(std::chrono::seconds(5));
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<ROV_Cameras>());
+    auto node = std::make_shared<ROV_Cameras>();
+    std::signal(SIGINT, signal_handler);
+    sigint_handler = [node](int signal){std::cout << "received signal " << signal << std::endl; node->sigint(); rclcpp::shutdown(); exit(signal);};
+    rclcpp::spin(node);
     rclcpp::shutdown();
 }
