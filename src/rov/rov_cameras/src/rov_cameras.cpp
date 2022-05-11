@@ -138,8 +138,8 @@ private:
             // get frame
             if(this->cameras[camera]->read(image)) {
                 // to locally test cameras uncomment these lines
-                cv::imshow("test", image);
-                cv::waitKey(1);
+                // cv::imshow("test", image);
+                // cv::waitKey(1);
                 sensor_msgs::msg::CompressedImage msg;
                 std_msgs::msg::Header header = std_msgs::msg::Header();
                 header.set__stamp(this->now());
