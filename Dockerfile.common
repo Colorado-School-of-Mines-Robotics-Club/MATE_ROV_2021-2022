@@ -15,60 +15,6 @@ RUN cd cmake-3.23.0-rc2 && cmake . && \
     rm -rf cmake-3.23.0-rc2.tar.gz && \
     rm -rf cmake-3.23.0-rc2
 
-# add apt repository for python
-RUN add-apt-repository -y 'ppa:deadsnakes/ppa'
-RUN apt-get update
-
-# install dependencies
-RUN apt-get clean
-RUN apt-get update
-RUN apt-get install -y \ 
-    git python3.6 python3.6-distutils
-
-# ensure python3.6 has most up to date version of pip
-RUN curl https://bootstrap.pypa.io/pip/3.6/get-pip.py -o get-pip.py && \
-    python3.6 get-pip.py && \
-    rm -rf get-pip.py
-
-# python3.6-dev dependencies are necessary for pip to build packages for arm64 platform
-RUN apt-get install -y \
-    python3.6-dev 
-
-# Dependency for colcon
-# Do these separated because wheel and setuptools appear to be funky dependencies for evdev and Jetson.GPIO
-RUN python3.6 -m pip install --upgrade setuptools wheel distlib
-# fix numpy illegal instruction due to compiler-reordered code https://github.com/numpy/numpy/issues/18131
-RUN export OPENBLAS_CORETYPE=ARMV8
-RUN python3.6 -m pip install numpy==1.19.4
-
-# some python dependencies
-RUN python3.6 -m pip install opencv-python Jetson.GPIO
-
-# some apt dependencies
-RUN apt-get install -y apt-utils libi2c-dev i2c-tools apt-utils python3-colcon-common-extensions python3-vcstool
-
-# python dependencies
-RUN apt-get install -y libdbus-1-dev
-RUN python3.6 -m pip install dbus-python
-
-# set defaults
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.6 0 && \
-    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 0 && \
-    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 0
-RUN update-alternatives --set python3 /usr/bin/python3.6 && \
-    update-alternatives --set g++ /usr/bin/g++-11 && \
-    update-alternatives --set gcc /usr/bin/gcc-11
-
-# boooost
-RUN wget https://downloads.sourceforge.net/project/boost/boost/1.78.0/boost_1_78_0.tar.gz \
-  && tar xfz boost_1_78_0.tar.gz \
-  && rm boost_1_78_0.tar.gz \
-  && cd boost_1_78_0 \
-  && ./bootstrap.sh --prefix=/usr/local --with-libraries=program_options \
-  && ./b2 install \
-  && cd .. \
-  && rm -rf boost_1_78_0
-
 # install gstreamer
 RUN apt-get install -y libgstreamer1.0-0 libgstreamer1.0-0-dbg libgstreamer1.0-dev libgstreamer-plugins-bad1.0-0 libgstreamer-plugins-base1.0-0 libgstreamer-plugins-base1.0-dev libgstreamer1.0 libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgtk-3-dev
 # install v4l2
@@ -91,6 +37,7 @@ RUN apt-get install -y libopenjp2-7 \
     libgtk2.0-dev \
     pkg-config \
     libtesseract4
+RUN apt-get install -y gstreamer1.0-x
 # we need gcc 8 to build for cuda 10.2
 RUN apt-get install -y gcc-8 g++-8
 RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 1 && \
@@ -108,4 +55,58 @@ RUN wget -O opencv.zip https://github.com/opencv/opencv/archive/4.5.0.zip && \
     make install
 RUN update-alternatives --set g++ /usr/bin/g++-11 && \
     update-alternatives --set gcc /usr/bin/gcc-11
-RUN apt-get install -y gstreamer1.0-x
+
+# add apt repository for python
+RUN add-apt-repository -y 'ppa:deadsnakes/ppa'
+RUN apt-get update
+
+# install dependencies
+RUN apt-get clean
+RUN apt-get update
+RUN apt-get install -y \ 
+    git python3.8 python3.8-distutils
+
+# ensure python3.8 has most up to date version of pip
+RUN curl https://bootstrap.pypa.io/pip/3.8/get-pip.py -o get-pip.py && \
+    python3.8 get-pip.py && \
+    rm -rf get-pip.py
+
+# python3.8-dev dependencies are necessary for pip to build packages for arm64 platform
+RUN apt-get install -y \
+    python3.8-dev 
+
+# Dependency for colcon
+# Do these separated because wheel and setuptools appear to be funky dependencies for evdev and Jetson.GPIO
+RUN python3.8 -m pip install --upgrade setuptools wheel distlib
+# fix numpy illegal instruction due to compiler-reordered code https://github.com/numpy/numpy/issues/18131
+RUN export OPENBLAS_CORETYPE=ARMV8
+RUN python3.8 -m pip install numpy==1.19.4
+
+# some python dependencies
+RUN python3.8 -m pip install opencv-python Jetson.GPIO
+
+# some apt dependencies
+RUN apt-get install -y apt-utils libi2c-dev i2c-tools apt-utils python3-colcon-common-extensions python3-vcstool
+
+# python dependencies
+RUN apt-get install -y libdbus-1-dev
+RUN python3.8 -m pip install dbus-python
+
+# set defaults
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 0 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 0 && \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 0
+RUN update-alternatives --set python3 /usr/bin/python3.8 && \
+    update-alternatives --set g++ /usr/bin/g++-11 && \
+    update-alternatives --set gcc /usr/bin/gcc-11
+
+# boooost
+RUN wget https://downloads.sourceforge.net/project/boost/boost/1.78.0/boost_1_78_0.tar.gz \
+    && tar xfz boost_1_78_0.tar.gz \
+    && rm boost_1_78_0.tar.gz \
+    && cd boost_1_78_0 \
+    && ./bootstrap.sh --prefix=/usr/local --with-libraries=program_options \
+    && ./b2 install \
+    && cd .. \
+    && rm -rf boost_1_78_0
+
