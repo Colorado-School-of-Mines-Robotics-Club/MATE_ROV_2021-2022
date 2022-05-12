@@ -17,8 +17,6 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(bs_flask REQUIRED)
-find_package(basestation_estop REQUIRED)
 
 install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}
