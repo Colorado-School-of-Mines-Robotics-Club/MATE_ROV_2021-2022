@@ -53,7 +53,9 @@ RUN wget -O opencv.zip https://github.com/opencv/opencv/archive/4.5.0.zip && \
     cmake -DOPENCV_EXTRA_MODULES_PATH=../opencv_contrib-4.5.0/modules ../opencv-4.5.0 -DCMAKE_BUILD_TYPE=Release -DBUILD_opencv_python3=ON -DWITH_CUDA=ON -DWITH_GSTREAMER=ON && \
     make -j 12 && \
     make install
-RUN update-alternatives --set g++ /usr/bin/g++-11 && \
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 0 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 0 && \
+    update-alternatives --set g++ /usr/bin/g++-11 && \
     update-alternatives --set gcc /usr/bin/gcc-11
 
 # add apt repository for python
@@ -63,11 +65,11 @@ RUN apt-get update
 # install dependencies
 RUN apt-get clean
 RUN apt-get update
-RUN apt-get install -y \ 
+RUN apt-get install -y \
     git python3.8 python3.8-distutils
 
 # ensure python3.8 has most up to date version of pip
-RUN curl https://bootstrap.pypa.io/pip/3.8/get-pip.py -o get-pip.py && \
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
     python3.8 get-pip.py && \
     rm -rf get-pip.py
 
