@@ -12,6 +12,7 @@
 		<!-- <script type="text/javascript" src="{{ url_for('static', filename='cameraViewport.js') }}"></script> -->
 		<script type="text/javascript" src="{{ url_for('static', filename='orientationViewport.js') }}"></script>
 		<script type="text/javascript" src="{{ url_for('static', filename='script.js') }}"></script>
+		<script type="text/javascript">const static_folder = {{ url_for("static", filename="") }};</script>
 	</head>
 	<body>
 		<table id="root" class="viewport-container">

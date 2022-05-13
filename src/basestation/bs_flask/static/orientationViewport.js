@@ -53,10 +53,10 @@ class OrientationViewport{
 			}
 
 			p5.preload = function(){
-				p5.loadModel("static/rov.stl", true, model => {
+				p5.loadModel(`${static_folder}rov.stl`, true, model => {
 					parent.model = model;
 				});
-				p5.loadModel("static/miku.stl", true, model => {
+				p5.loadModel(`${static_folder}miku.stl`, true, model => {
 					parent.alt_model = model;
 				});
 			}
