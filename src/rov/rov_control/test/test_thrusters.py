@@ -3,11 +3,11 @@ from rclpy.node import Node
 from rov_interfaces.srv import CreateContinuousServo
 from rov_interfaces.msg import PWM
 
-node = Node("thruster_tester_3000")
+rclpy.init()
+node = rclpy.create_node("thruster_tester_3000")
 current_thruster = 0
 print("Welcome to the best thruster tester you've ever experienced")
 print("Creating thruster servos")
-rclpy.init()
 
 servo_srv = node.create_client(CreateContinuousServo, "create_continuous_servo")
 print("Waiting for thruster servo creator service")
@@ -16,9 +16,10 @@ print("Service found!  Creating thruster servos")
 servos = [0, 1, 2, 3, 12, 13, 14, 15]
 
 for srv in servos:
-    future = servo_srv.call_async(CreateContinuousServo.Request(channel=srv))
-    rclpy.spin_until_future_complete(node, future)
-    res = future.result
+    res = servo_srv.call(CreateContinuousServo.Request(channel=srv))
+    # future = servo_srv.call_async(CreateContinuousServo.Request(channel=srv))
+    # rclpy.spin_until_future_complete(node, future)
+    # res = future.result()
     print(f"Thruster Servo: {res.channel}, Result: {res.result}")
 
 
@@ -48,3 +49,4 @@ while True:
             continue
         pwm_pub.publish(PWM(is_continuous_servo=True, channel=current_thruster, angle_or_throttle=thrust))
     rclpy.spin_once(node, timeout_sec=1)
+rclpy.shutdown()
