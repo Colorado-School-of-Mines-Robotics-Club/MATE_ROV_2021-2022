@@ -1,7 +1,6 @@
 class OrientationViewport{
 	constructor(container){
 		let parent = this;
-		this._setupDone = false;
 
 		this.side_length = 100;
 
@@ -28,6 +27,8 @@ class OrientationViewport{
 		};
 
 		this.model = null;
+		this.alt_model = null;
+		this.use_alt_model = false;
 
 		this.sketch = new p5(function(p5){
 			let frameCount = 0;
@@ -55,19 +56,17 @@ class OrientationViewport{
 				p5.loadModel("static/rov.stl", true, model => {
 					parent.model = model;
 				});
+				p5.loadModel("static/miku.stl", true, model => {
+					parent.alt_model = model;
+				});
 			}
 
 			p5.setup = function(){
 				p5.createCanvas(0, 0, p5.WEBGL);
 				p5.windowResized();
-				// parent._onP5Setup();
 			}
 
 			p5.draw = function(){
-				// let rot = Quaternion.fromBetweenVectors(Object.values(parent.orientation_data.current_gravity), [0, 0, -1]);
-				// let rotated = rot.rotateVector(Object.values(parent.orientation_data.current_magnetometer));
-				// let angle = Math.atan2(rotated[1], rotated[0]);
-
 				p5.background(55, 59, 62);
 
 				p5.withState("orientation_viewport", () => {
@@ -110,23 +109,15 @@ class OrientationViewport{
 					p5.applyQuaternion(parent.orientation_data.current_delta);
 					p5.rotateZ(parent.orientation_data.initial_heading);
 
-					// let side_length = parent.side_length;
-					// let world_axis_length = .5 * parent.side_length;
-					// let local_axis_length = .6 * parent.side_length;
-
-					// p5.stroke(255, 0, 0);
-					// p5.line(0, 0, 0, world_axis_length, 0, 0);
-					// p5.stroke(0, 255, 0);
-					// p5.line(0, 0, 0, 0, world_axis_length, 0);
-					// p5.stroke(0, 0, 255);
-					// p5.line(0, 0, 0, 0, 0, world_axis_length);
-
 					p5.withState("draw_model", () => {
 						p5.normalMaterial();
-						// p5.box(50, 50, 50);
-						p5.translate(0, -40, 0);
-						p5.applyRotation(0, 0, 1, -2.5);
-						if(parent.model !== null) p5.model(parent.model);
+						if(parent.use_alt_model){
+							p5.translate(0, -40, 0);
+							p5.applyRotation(0, 0, 1, -2.5);
+							if(parent.alt_model !== null) p5.model(parent.alt_model);
+						}else{
+							if(parent.model !== null) p5.model(parent.model);
+						}
 					});
 				});
 
@@ -194,12 +185,5 @@ class OrientationViewport{
 				});
 			}
 		}, container);
-	}
-
-	_onP5Setup(){
-		this.canvas = this.sketch.canvas;
-		this.container_element = this.canvas.parentElement;
-
-		this._setupDone = true;
 	}
 }

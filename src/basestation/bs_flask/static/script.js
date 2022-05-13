@@ -1,3 +1,19 @@
+// https://stackoverflow.com/a/45576888
+function onKonamiCode(fnc){
+	let input = '';
+	let key = '38384040373937396665';
+	document.addEventListener('keydown', event => {
+		input += "" + event.keyCode;
+		if(input === key){
+			return fnc();
+		}else if(!key.indexOf(input)){
+			return;
+		}else{
+			input = "" + event.keyCode;
+		}
+	});
+}
+
 function makeRotation(x, y, z, theta){
 	let normalized_vector = Quaternion([x, y, z]).normalize();
 	let c = Math.cos(.5 * theta);
@@ -36,17 +52,17 @@ $(function(){
 		});
 
 		let orientation_viewport = new OrientationViewport(document.getElementById("orientation-viewport"));
+		onKonamiCode(() => {
+			orientation_viewport.use_alt_model = true;
+			document.getElementById("graphic").style.opacity = .5;
+			console.log("Entering mode: 01");
+		});
 
 		let button_active_color = "#2eb398";
 		let button_inactive_color = "white";
 		let joystick_event_source = new EventSource("/get_joystick");
 		joystick_event_source.onmessage = event => {
 			let data = JSON.parse(event.data);
-
-			// orientation_viewport.rot.x = -50 * data.axes[0];
-			// orientation_viewport.rot.y = 50 * data.axes[1];
-			// // orientation_viewport.a = 1 * data.axes[2];
-			// orientation_viewport.orientation_quaternion = makeRotation(-data.axes[0], data.axes[1], -1, Math.PI * data.axes[3]);
 
 			data.axes = data.axes.map(value => 50 * (value + 1));
 			data.axes.forEach((value, idx) => {
@@ -67,7 +83,6 @@ $(function(){
 
 			if(orientation_viewport.orientation_data.base_quaternion_inverse === null){
 				orientation_viewport.orientation_data.base_quaternion_inverse = orientation_viewport.orientation_data.current_quaternion.inverse();
-				console.log(orientation_viewport.orientation_data);
 
 				let rotated_magnetometer = Quaternion.fromBetweenVectors(
 					Object.values(data.gravity),
