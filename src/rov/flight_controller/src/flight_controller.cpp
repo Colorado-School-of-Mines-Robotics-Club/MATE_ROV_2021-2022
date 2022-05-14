@@ -42,14 +42,14 @@ public:
                                 IZX,IZY,IZZ;
         // define thrusters TODO: replace with a config file? (temp values atm)
         float x = sqrt(2)/2;
-        thrusters[0] = Thruster(Eigen::Vector3d(0.5,    0.5,    -0.5),  Eigen::Vector3d(0, 0,-1), 0);
-        thrusters[1] = Thruster(Eigen::Vector3d(-0.5,   0.5,    -0.5),  Eigen::Vector3d(0, 0,-1), 15);
-        thrusters[2] = Thruster(Eigen::Vector3d(0.5,    -0.5,   -0.5),  Eigen::Vector3d(0, 0,-1), 3);
-        thrusters[3] = Thruster(Eigen::Vector3d(-0.5,   -0.5,   -0.5),  Eigen::Vector3d(0, 0,-1), 13);
-        thrusters[4] = Thruster(Eigen::Vector3d(0.5,    0.5,    0),     Eigen::Vector3d(-x,  x, 0), 2);
-        thrusters[5] = Thruster(Eigen::Vector3d(-0.5,   0.5,    0),     Eigen::Vector3d(x,   x, 0), 12);
-        thrusters[6] = Thruster(Eigen::Vector3d(0.5,    -0.5,   0),     Eigen::Vector3d(-x, -x, 0), 1);
-        thrusters[7] = Thruster(Eigen::Vector3d(-0.5,   -0.5,   0),     Eigen::Vector3d(x,  -x, 0), 14);
+        thrusters[0] = Thruster(Eigen::Vector3d(1,    1,    0),  Eigen::Vector3d( 0,  0,  1), 0);
+        thrusters[1] = Thruster(Eigen::Vector3d(1,   -1,    0),  Eigen::Vector3d( 0,  0,  1), 1);
+        thrusters[2] = Thruster(Eigen::Vector3d(1,   -0.5,  0),  Eigen::Vector3d( x,  x,  0), 2);
+        thrusters[3] = Thruster(Eigen::Vector3d(1,    0.5,  0),  Eigen::Vector3d( x, -x,  0), 3);
+        thrusters[4] = Thruster(Eigen::Vector3d(-1,   1,    0),  Eigen::Vector3d( 0,  0,  1), 12);
+        thrusters[5] = Thruster(Eigen::Vector3d(-1,  -1,    0),  Eigen::Vector3d( 0,  0,  1), 13);
+        thrusters[6] = Thruster(Eigen::Vector3d(-1,  -0.5,  0),  Eigen::Vector3d(-x,  x,  0), 14);
+        thrusters[7] = Thruster(Eigen::Vector3d(-1,   0.5,  0),  Eigen::Vector3d(-x, -x,  0), 15);
 
         std::array<Eigen::VectorXd, NUM_THRUSTERS> temp;
         for(int i = 0; i < NUM_THRUSTERS; i++) {
@@ -57,6 +57,7 @@ public:
             // calculate linear and rotation contribution
             Eigen::Vector3d linear_contribution(t.thrust * MAX_THRUST_VALUE);
             Eigen::Vector3d rotation_contribution(t.position.cross(t.thrust * MAX_THRUST_VALUE));
+            this->thruster_index_to_PWM_pin.emplace(std::make_pair(i, t.pwm_pin));
 
             // concatenate them
             temp[i] = Eigen::VectorXd(6);
