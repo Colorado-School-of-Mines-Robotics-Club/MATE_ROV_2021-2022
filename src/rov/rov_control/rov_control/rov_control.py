@@ -191,18 +191,17 @@ class ROV_Control(Node):
         thrust_setpoints = ThrusterSetpoints()
         translate_speed = self.get_parameter("translate_speed").value
         rotate_speed = self.get_parameter("rotate_speed").value
-        throttle = (joystick.throttle + 1) / 2  # map [-1, 1] to [0, 1]
 
         if joystick.thumb:
             # Rotation mode
-            thrust_setpoints.omegax = -joystick.pitch * rotate_speed * throttle
-            thrust_setpoints.omegay = -joystick.roll * rotate_speed * throttle
-            thrust_setpoints.omegaz = -joystick.yaw * rotate_speed * throttle
+            thrust_setpoints.omegax = -joystick.pitch * rotate_speed
+            thrust_setpoints.omegay = -joystick.roll * rotate_speed
+            thrust_setpoints.omegaz = -joystick.yaw * rotate_speed
         else:
             # Translation mode
-            thrust_setpoints.vx = -joystick.roll * translate_speed * throttle
-            thrust_setpoints.vy = joystick.pitch * translate_speed * throttle
-            thrust_setpoints.vz = joystick.hat_y * translate_speed * throttle
+            thrust_setpoints.vx = -joystick.roll * translate_speed
+            thrust_setpoints.vy = joystick.pitch * translate_speed
+            thrust_setpoints.vz = joystick.throttle * translate_speed
 
         self.thruster_setpoint_pub.publish(thrust_setpoints)
 

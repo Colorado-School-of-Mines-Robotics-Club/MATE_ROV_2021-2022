@@ -18,16 +18,6 @@
 #include "flight_controller/Thruster.hpp"
 
 #define NUM_THRUSTERS 8
-#define MASS 100
-#define IXX 100
-#define IXY 100
-#define IXZ 100
-#define IYX 100
-#define IYY 100
-#define IYZ 100
-#define IZX 100
-#define IZY 100
-#define IZZ 100
 
 #define MIN_THRUST_VALUE -28.44
 #define MAX_THRUST_VALUE 36.4
@@ -37,9 +27,6 @@
 class FlightController : public rclcpp::Node {
 public:
     FlightController() : Node(std::string("flight_controller")) {
-        this->inertia_tensor << IXX,IXY,IXZ,
-                                IYX,IYY,IYZ,
-                                IZX,IZY,IZZ;
         // define thrusters TODO: replace with a config file? (temp values atm)
         float x = sqrt(2)/2;
         thrusters[0] = Thruster(Eigen::Vector3d(1,    1,    0),  Eigen::Vector3d( 0,  0,  1), 0);
@@ -73,18 +60,24 @@ public:
         // use PWM service to register thrusters on PCA9685
         this->registerThrusters();
         
+        // create ros subscriptions and publishers
         thruster_setpoint_subscription = this->create_subscription<rov_interfaces::msg::ThrusterSetpoints>("thruster_setpoints", 10, std::bind(&FlightController::setpoint_callback, this, std::placeholders::_1));
         bno_data_subscription = this->create_subscription<rov_interfaces::msg::BNO055Data>("bno055_data", rclcpp::SensorDataQoS(), std::bind(&FlightController::bno_callback, this, std::placeholders::_1));
         
-        _publisher = this->create_publisher<rov_interfaces::msg::PWM>("PWM", 10);
+        _publisher = this->create_publisher<rov_interfaces::msg::PWM>("pwm", 10);
 
         // about 60 hz update rate
+#if(USE_PID == true)
         pid_control_loop = this->create_wall_timer(std::chrono::milliseconds(16), std::bind(&FlightController::update, this));
+#else
+        pid_control_loop = this->create_wall_timer(std::chrono::milliseconds(16), std::bind(&FlightController::updateSimple, this));
+#endif
     }
 private:
     void registerThrusters() {
         // create service client
         auto pca9685 = this->create_client<rov_interfaces::srv::CreateContinuousServo>("create_continuous_servo");
+        std::array<std::shared_future<std::shared_ptr<rov_interfaces::srv::CreateContinuousServo_Response>>, NUM_THRUSTERS> requests;
         for(int i=0; i < NUM_THRUSTERS; i++) {
             // create continuous servo creation requests on channels 0 -> NUM_THRUSTERS
             auto req = std::make_shared<rov_interfaces::srv::CreateContinuousServo_Request>();
@@ -98,17 +91,24 @@ private:
                 RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "service not available, waiting again...");
             }
 
-            // create lambda function to handle asynchronous callbacks
-            using ServiceResponseFuture = rclcpp::Client<rov_interfaces::srv::CreateContinuousServo>::SharedFuture;
-            auto registerThrusterCallback = [this](ServiceResponseFuture future) {
-                auto res = future.get();
-                if(res->result)
-                    RCLCPP_INFO(this->get_logger(), "Successfully registered continuous servo on channel %i", res->channel);
-                else
-                    RCLCPP_ERROR(this->get_logger(), "Unsuccessfully registered continuous servo on channel %i", res->channel);
-            };
             // asynchronously send these servo creation requests
-            auto future_result = pca9685->async_send_request(req, registerThrusterCallback);
+            requests[i] = pca9685->async_send_request(req);
+        }
+
+        // wait for requests to be completed
+        for(int i=0; i < NUM_THRUSTERS; i++) {
+            auto status = requests[i].wait_for(std::chrono::milliseconds(100));
+            if(status == std::future_status::ready) {
+                auto res = requests[i].get();
+                if(res->result) {
+                    RCLCPP_INFO(this->get_logger(), "Successfully registered continuous servo on channel %i", res->channel);
+                } else {
+                    RCLCPP_ERROR(this->get_logger(), "Unsuccessfully registered continuous servo on channel %i", res->channel);
+                }
+            } else {
+                i--;
+                continue;
+            }
         }
     }
 
@@ -126,6 +126,26 @@ private:
     void bno_callback(const rov_interfaces::msg::BNO055Data::SharedPtr bno_data) {
         std::lock_guard<std::mutex>(this->bno_mutex);
         this->bno_data = *bno_data.get();
+    }
+
+    void updateSimple() {
+        // this is direct mapping from velocities to output force
+        // warning: no proportional controller; might be unweildy to use
+        Eigen::Matrix<double, 6, 1> desired_throttles;
+        desired_throttles << translation_setpoints, attitude_setpoints;
+
+        // scale thrusters to account for large thrust demands on a single thruster
+        // TODO: implement
+        Eigen::Matrix<double, NUM_THRUSTERS, 1> throttles;
+
+        // publish PWM values
+        for(int i = 0; i < NUM_THRUSTERS; i++) {
+            rov_interfaces::msg::PWM msg;
+            msg.angle_or_throttle = static_cast<float>(throttles(i,0)); // this is a source of noise in output signals, may cause system instability??
+            msg.is_continuous_servo = true;
+            msg.channel = thruster_index_to_PWM_pin.at(i);
+            _publisher->publish(msg);
+        }
     }
 
     void update() {
@@ -155,11 +175,13 @@ private:
         // update desired force
         // Linear, discrete-time PID controller
         // lambdas for linear PID loop
-        auto P = [](double& kp, Eigen::Vector3d& linear_velocity_err)->Eigen::Vector3d{
+        auto P = [](double& kp, Eigen::Vector3d& linear_velocity_err)->Eigen::Vector3d {
             return kp * linear_velocity_err;
         };
-        auto I = [](double& ki, Eigen::Vector3d& linear_velocity_err, int& dt_ms)->Eigen::Vector3d{return ki * linear_velocity_err * dt_ms / 1000;};
-        auto D = [](double& kd, Eigen::Vector3d& linear_velocity_err, Eigen::Vector3d& linear_velocity_err_last, int& dt_ms)->Eigen::Vector3d{
+        auto I = [](double& ki, Eigen::Vector3d& linear_velocity_err, int& dt_ms)->Eigen::Vector3d {
+            return ki * linear_velocity_err * dt_ms / 1000;
+        };
+        auto D = [](double& kd, Eigen::Vector3d& linear_velocity_err, Eigen::Vector3d& linear_velocity_err_last, int& dt_ms)->Eigen::Vector3d {
             return kd* (linear_velocity_err - linear_velocity_err_last) / (static_cast<double>(dt_ms) / 1000);
         };
 
@@ -167,18 +189,6 @@ private:
         desired_force = P(kp,linear_velocity_err)
                         + (linear_integral += I(ki, linear_velocity_err, dt_ms))
                         + D(kd, linear_velocity_err, linear_velocity_err_last, dt_ms);
-
-        // this is direct mapping from velocity to output force
-        // warning: no proportional controller; might be unweildy to use
-        // in continuous time
-        // F = ma = m * dv/dt
-        // in discrete time
-        // F = m * delta v / delta t ; accurate only if delta t is small
-        // desired_force(0,0) = (translation_setpoints(0,0) - translation_setpoints_last(0,0));
-        // desired_force(1,0) = (translation_setpoints(1,0) - translation_setpoints_last(1,0));
-        // desired_force(2,0) = (translation_setpoints(2,0) - translation_setpoints_last(2,0));
-        // desired_force = MASS / dt_ms * desired_force;
-
 
         // update desired torque
         // TODO: look at this if performance needs to be improved (loses accuracy tho)
@@ -190,6 +200,10 @@ private:
         } else {
             quaternion_reference = Eigen::Quaterniond(1.0, ha.x(), ha.y(), ha.z());
         }
+        // desired orientation is only known by the pilot, quaternion reference defines a reference from a unity quaternion (1,0,0,0)
+        // to get actual reference, this must be multiplied with the measured quaternion to get desired orientation
+        // TODO: ensure that when w = 0, this is close to, or equal to unity
+        quaternion_reference = quaternion_reference * quaternion_measured;
 
         // Non Linear P^2 Quaternion based control scheme
         // For derivation of controller see: http://www.diva-portal.org/smash/get/diva2:1010947/FULLTEXT01.pdf
@@ -274,13 +288,13 @@ private:
     Eigen::Vector3d linear_integral;
     Eigen::Vector3d linear_velocity_err = Eigen::Vector3d(0,0,0);
     Eigen::Vector3d linear_velocity_err_last;
+
     std::array<Thruster, NUM_THRUSTERS> thrusters;
     Eigen::Matrix<double, 6, NUM_THRUSTERS> thruster_geometry;
     Eigen::Matrix<double, NUM_THRUSTERS, 6> thruster_geometry_pseudo_inverse;
     Eigen::DiagonalMatrix<double, NUM_THRUSTERS> thruster_coefficient_matrix;
     Eigen::Matrix<double, NUM_THRUSTERS, 6> thruster_coefficient_matrix_times_geometry;
     std::unordered_map<int, int> thruster_index_to_PWM_pin;
-    Eigen::MatrixXd inertia_tensor = Eigen::MatrixXd(3,3);
 
     double Pq = 1.0, Pw = 1.0; // TODO: tune these gain constants
     double kp = 1.0, ki = 1.0, kd = 1.0;
@@ -288,7 +302,10 @@ private:
 
 int main(int argc, char ** argv) {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<FlightController>());
+    auto node = std::make_shared<FlightController>();
+    rclcpp::executors::MultiThreadedExecutor exec;
+    exec.add_node(node);
+    exec.spin();
     rclcpp::shutdown();
     return 0;
 }
