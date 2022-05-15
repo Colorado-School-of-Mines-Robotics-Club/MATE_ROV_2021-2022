@@ -8,8 +8,6 @@ WORKDIR /opt/ros/CSM_MATE_WS
 # Probably don't use VENV. Colcon has a rough time with it and it's not worth it
 # RUN python3.6 -m venv /BASE_VENV
 RUN python3.8 -m pip install flask evdev
-RUN python3.8 -m pip uninstall -y opencv-python
-#RUN python3.8 -m pip install opencv-python==4.5.0
 
 COPY setup/99-gpio.rules /etc/udev/rules.d
 COPY setup/ros_entrypoint.sh .
@@ -22,7 +20,7 @@ RUN udevadm trigger
 COPY src .
 
 RUN . /opt/ros/$ROS_DISTRO/install/setup.sh && \
-    colcon build --packages-up-to bs_flask basestation_estop bs_launch
+    colcon build --packages-up-to bs_launch
 
 # Copy over initial run stuff.
 # Entrypoint can more or less be understood as "run this no matter what". It sources the ROS install.

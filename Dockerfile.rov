@@ -17,7 +17,18 @@ COPY setup/rov_entrypoint.sh .
 # RUN rosdep update && \
 #     rosdep install --ignore-src -y src/rov/
 RUN . /opt/ros/$ROS_DISTRO/install/setup.sh && \
-    colcon build --packages-up-to bar02 bno055 flight_controller manipulator_control pca9685_node rov_cameras rov_estop rov_interfaces rov_launch rov_statistics
+    colcon build --symlink-install --packages-select \
+    bar02 \
+    bno055 \
+    flight_controller \
+    manipulator_control \
+    pca9685_node \
+    rov_cameras \
+    rov_estop \
+    rov_interfaces \
+    rov_launch \
+    rov_statistics \
+    --cmake-args -DPID=true --no-warn-unused-cli
 
 # Copy over initial run stuff.
 # Entrypoint can more or less be understood as "run this no matter what". It sources the ROS install.
